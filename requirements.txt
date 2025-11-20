@@ -1,0 +1,6 @@
+pyfundlib[full]
+furo
+sphinx-autodoc-typehints
+sphinx-copybutton
+sphinxext-opengraph
+myst-parser
