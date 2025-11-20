@@ -1,0 +1,35 @@
+# .github/workflows/release.yaml
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # Trigger on tags like v0.1.4
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for trusted publishing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install --upgrade build hatchling hatch-vcs
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true  # Avoids conflicts if version exists
