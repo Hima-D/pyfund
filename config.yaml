@@ -1,0 +1,19 @@
+broker:
+  name: "zerodha"          # Change to "alpaca", "ibkr", etc.
+  api_key: "your_zerodha_key"
+  access_token: "your_access_token"
+
+live_trading: false        # Set to true when ready
+paper_trading: true
+
+universe:
+  - "RELIANCE"
+  - "TCS"
+  - "INFY"
+  - "HDFCBANK"
+  - "AAPL"
+
+default_strategy: "donchian_breakout"
+default_params:
+  entry_period: 55
+  exit_period: 20

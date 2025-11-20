@@ -1,7 +1,21 @@
-__version__ = "0.1.0"
+"""pyfund - End-to-End Python Toolkit for Algo Trading."""
 
-# Easy imports
-from .strategies import *
-from .ml.predictor import Predictor
-from .automation.scheduler import JobScheduler
-from .data.fetcher import fetch_ohlcv  # Example
+__version__ = "0.1.0"
+__author__ = "Himanshu Dixit"
+
+from .data import fetcher, processor, features
+from .indicators import rsi, sma, macd
+from .strategies import RSIMeanReversionStrategy, MLRandomForestStrategy
+from .backtester import Backtester
+from .ml.predictor import MLPredictor
+from .portfolio.allocator import PortfolioAllocator
+from .execution.live import LiveExecutor
+from .automation.runner import AutomationRunner
+
+__all__ = [
+    "fetcher", "processor", "features",
+    "rsi", "sma", "macd",
+    "RSIMeanReversionStrategy", "MLRandomForestStrategy",
+    "Backtester", "MLPredictor", "PortfolioAllocator",
+    "LiveExecutor", "AutomationRunner",
+]
