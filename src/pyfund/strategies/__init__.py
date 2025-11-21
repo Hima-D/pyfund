@@ -106,4 +106,4 @@ def get_strategy(name: str, **params):
 __version__ = "1.0.0"
 __author__ = "Himanshu Dixit"
 
-print(f"pyfund.strategies loaded - {len(__all__)} professional strategies ready")
+print(f"pyfund.strategies loaded - {len(__all__)} professional strategies ready")from .arima_garch_reversion import ARIMAGARCHStrategy
