@@ -1,12 +1,12 @@
 # src/pyfundlib/simulation/core.py
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Callable, Dict, Any, Optional, Union, Sequence
-from dataclasses import dataclass
-from scipy.stats import Distributions
-import warnings
 
 from ..utils.logger import get_logger
 
@@ -14,25 +14,30 @@ logger = get_logger(__name__)
 
 # Type aliases for clarity
 PricePath = pd.DataFrame  # index: dates, columns: paths
-ReturnPath = pd.Series    # single path of returns
+ReturnPath = pd.Series  # single path of returns
 SimulatorFunc = Callable[..., PricePath]
+
 
 @dataclass
 class Regime:
     """Define a market regime (bull, bear, sideways, crisis, etc.)"""
+
     name: str
-    mu: float                     # Annual drift
-    sigma: float                  # Annual volatility
-    weight: float = 1.0           # Probability weight in regime-switching
-    jump_lambda: float = 0.0      # Jumps per year (optional)
+    mu: float  # Annual drift
+    sigma: float  # Annual volatility
+    weight: float = 1.0  # Probability weight in regime-switching
+    jump_lambda: float = 0.0  # Jumps per year (optional)
     jump_mean: float = 0.0
     jump_std: float = 0.0
+
 
 @dataclass
 class StressShock:
     """Single shock event"""
-    date_offset: int              # Days from start
-    return_shock: float           # e.g., -0.20 for -20% crash
+
+    date_offset: int  # Days from start
+    return_shock: float  # e.g., -0.20 for -20% crash
+
 
 class CustomSimulator:
     """
@@ -45,7 +50,7 @@ class CustomSimulator:
     """
 
     def __init__(self):
-        self._simulators: Dict[str, SimulatorFunc] = {}
+        self._simulators: dict[str, SimulatorFunc] = {}
         self.register_default_simulators()
 
     def register_simulator(self, name: str, func: SimulatorFunc) -> None:
@@ -55,10 +60,10 @@ class CustomSimulator:
 
     def register_default_simulators(self):
         """Built-in simulators"""
-        from .gbm import gbm_simulator
-        from .jump_diffusion import jump_diffusion_simulator
-        from .heston import heston_simulator
         from .bootstrap import bootstrap_simulator
+        from .gbm import gbm_simulator
+        from .heston import heston_simulator
+        from .jump_diffusion import jump_diffusion_simulator
 
         self.register_simulator("gbm", gbm_simulator)
         self.register_simulator("jump_diffusion", jump_diffusion_simulator)
@@ -69,11 +74,11 @@ class CustomSimulator:
         self,
         method: str = "gbm",
         S0: float = 100.0,
-        regimes: Optional[Sequence[Regime]] = None,
-        shocks: Optional[Sequence[StressShock]] = None,
+        regimes: Sequence[Regime] | None = None,
+        shocks: Sequence[StressShock] | None = None,
         T: int = 252 * 5,
         n_paths: int = 1000,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         **kwargs: Any,
     ) -> PricePath:
         """
@@ -100,7 +105,9 @@ class CustomSimulator:
         rng = np.random.default_rng(seed)
 
         if method not in self._simulators:
-            raise ValueError(f"Unknown simulation method: {method}. Available: {list(self._simulators.keys())}")
+            raise ValueError(
+                f"Unknown simulation method: {method}. Available: {list(self._simulators.keys())}"
+            )
 
         # Base simulation
         base_paths = self._simulators[method](
@@ -123,6 +130,7 @@ class CustomSimulator:
 
         return base_paths
 
+
 # Global instance — users can customize it!
 simulator = CustomSimulator()
 
@@ -135,7 +143,7 @@ def my_crypto_simulator(S0: float, T: int, n_paths: int, rng: np.random.Generato
     # Use Student-t for fat tails
     df = 3
     steps = T
-    dt = 1/252
+    dt = 1 / 252
     Z = rng.standard_t(df, size=(steps, n_paths))
     dW = Z * np.sqrt(dt)
     drift = (mu - 0.5 * sigma**2) * dt
@@ -144,6 +152,7 @@ def my_crypto_simulator(S0: float, T: int, n_paths: int, rng: np.random.Generato
     paths = S0 * np.exp(np.cumsum(log_returns, axis=0))
     dates = pd.bdate_range(start="today", periods=steps + 1)
     return pd.DataFrame(paths, index=dates)
+
 
 # Users can do this in their code:
 # simulator.register_simulator("crypto_madness", my_crypto_simulator)

@@ -1,15 +1,17 @@
 # src/pyfund/strategies/market_making.py
-import pandas as pd
+
 import numpy as np
-from typing import Dict, Tuple, Optional
-from .base import BaseStrategy
+import pandas as pd
+
 from ..data.fetcher import DataFetcher
 from ..utils.logger import logger
+from .base import BaseStrategy
+
 
 class MarketMakingStrategy(BaseStrategy):
     """
     High-Frequency Style Market Making Strategy (for sim/live crypto/stocks)
-    
+
     Features:
     - Dynamic bid/ask quoting based on fair value + skew
     - Inventory risk control (skew quotes to flatten)
@@ -20,17 +22,17 @@ class MarketMakingStrategy(BaseStrategy):
     """
 
     default_params = {
-        "base_spread_bps": 15,          # 15 bps base spread (0.15%)
-        "skew_factor": 0.0005,          # How much to skew per $1 inventory
-        "inventory_limit": 1000.0,      # Max absolute inventory in base currency
-        "vol_window": 60,               # Volatility lookback (minutes)
-        "gamma": 0.001,                 # Risk aversion (higher = wider spreads)
-        "kappa": 0.1,                   # Speed of mean reversion for skew
-        "order_size": 0.1,              # Size per quote (in base currency, e.g., 0.1 BTC)
-        "max_position": 5.0,            # Hard position limit
+        "base_spread_bps": 15,  # 15 bps base spread (0.15%)
+        "skew_factor": 0.0005,  # How much to skew per $1 inventory
+        "inventory_limit": 1000.0,  # Max absolute inventory in base currency
+        "vol_window": 60,  # Volatility lookback (minutes)
+        "gamma": 0.001,  # Risk aversion (higher = wider spreads)
+        "kappa": 0.1,  # Speed of mean reversion for skew
+        "order_size": 0.1,  # Size per quote (in base currency, e.g., 0.1 BTC)
+        "max_position": 5.0,  # Hard position limit
     }
 
-    def __init__(self, ticker: str = "BTC-USD", params: Optional[Dict] = None):
+    def __init__(self, ticker: str = "BTC-USD", params: dict | None = None):
         super().__init__({**self.default_params, **(params or {})})
         self.ticker = ticker.upper()
         self.inventory = 0.0
@@ -51,18 +53,20 @@ class MarketMakingStrategy(BaseStrategy):
         recent = data["Volume"].tail(10)
         return (recent.pct_change().fillna(0)).mean()
 
-    def _calculate_quotes(self, mid_price: float, volatility: float) -> Tuple[float, float, float, float]:
+    def _calculate_quotes(
+        self, mid_price: float, volatility: float
+    ) -> tuple[float, float, float, float]:
         """Calculate bid/ask prices and sizes with inventory skew"""
         base_spread = self.params["base_spread_bps"] / 10000
-        vol_spread = self.params["gamma"] * volatility ** 2
-        
+        vol_spread = self.params["gamma"] * volatility**2
+
         # Dynamic spread
         spread = base_spread + vol_spread
         half_spread = spread / 2
 
         # Inventory skew: if long inventory → quote lower to sell
         skew = -self.params["skew_factor"] * self.inventory * mid_price
-        
+
         bid_price = mid_price - half_spread * mid_price + skew
         ask_price = mid_price + half_spread * mid_price + skew
 
@@ -79,9 +83,11 @@ class MarketMakingStrategy(BaseStrategy):
         This method returns current quote state.
         """
         if len(data) < 10:
-            return pd.Series({"action": "WAIT", "reason": "insufficient_data"}, index=data.index[-1:])
+            return pd.Series(
+                {"action": "WAIT", "reason": "insufficient_data"}, index=data.index[-1:]
+            )
 
-        close = data['Close']
+        close = data["Close"]
         returns = np.log(close / close.pct_change().shift(1))
 
         self.fair_value = close.iloc[-1]
@@ -112,7 +118,9 @@ class MarketMakingStrategy(BaseStrategy):
         }
 
         self.quote_history.append(quote)
-        logger.info(f"MM Quote: {quote['bid']} / {quote['ask']} | Inv: {quote['inventory']} | P&L: {quote['pnl']}")
+        logger.info(
+            f"MM Quote: {quote['bid']} / {quote['ask']} | Inv: {quote['inventory']} | P&L: {quote['pnl']}"
+        )
 
         return pd.Series(quote)
 
@@ -124,25 +132,29 @@ class MarketMakingStrategy(BaseStrategy):
         else:  # sell
             self.inventory -= qty
             self.cash += price * qty
-        
+
         self.pnl = self.cash + self.inventory * self.fair_value - 100000.0
-        logger.info(f"FILL {side.upper()} {qty} @ {price} | New Inv: {self.inventory:.4f} | P&L: ${self.pnl:,.2f}")
+        logger.info(
+            f"FILL {side.upper()} {qty} @ {price} | New Inv: {self.inventory:.4f} | P&L: ${self.pnl:,.2f}"
+        )
 
     def __repr__(self):
-        return f"MarketMakingStrategy({self.ticker}, inv={self.inventory:.2f}, pnl=${self.pnl:,.0f})"
+        return (
+            f"MarketMakingStrategy({self.ticker}, inv={self.inventory:.2f}, pnl=${self.pnl:,.0f})"
+        )
 
 
 # Live demo
 if __name__ == "__main__":
     mm = MarketMakingStrategy("BTC-USD", {"base_spread_bps": 10, "order_size": 0.01})
-    
+
     print("Starting Market Maker for BTC-USD...")
     data = DataFetcher.get_price("BTC-USD", period="1d", interval="1m")
-    
+
     for i in range(len(data) - 100, len(data)):
-        quote = mm.generate_signals(data.iloc[:i+1])
+        quote = mm.generate_signals(data.iloc[: i + 1])
         print(quote.to_dict() if isinstance(quote, pd.Series) else quote)
-        
+
         # Simulate random fill
         if np.random.rand() < 0.1:
             side = "buy" if np.random.rand() < 0.5 else "sell"

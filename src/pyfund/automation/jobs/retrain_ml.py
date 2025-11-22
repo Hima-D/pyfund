@@ -3,6 +3,7 @@ def retrain_job():
     # In real use, this would call your ML training pipeline
     try:
         from pyfund.ml.predictor import MLPredictor
+
         predictor = MLPredictor()
         predictor.train_all()
         print("[Automation] ML models retrained successfully")

@@ -1,11 +1,13 @@
 # src/pyfundlib/simulation/__init__.py
 from __future__ import annotations
 
+import warnings
+from collections.abc import Sequence
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 import pandas as pd
-from typing import Optional, Sequence, Dict, Any, Union
-from scipy.stats import norm, t, genextreme
-import warnings
+from scipy.stats import genextreme, norm, t
 
 from ..data.processor import DataProcessor
 from ..utils.logger import get_logger
@@ -29,9 +31,9 @@ class MarketSimulator:
         mu: float,
         sigma: float,
         T: int = 252,
-        dt: float = 1/252,
+        dt: float = 1 / 252,
         n_paths: int = 1000,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> pd.DataFrame:
         """
         Geometric Brownian Motion simulation (Black-Scholes world).
@@ -75,7 +77,7 @@ class MarketSimulator:
         historical_returns: pd.Series,
         n_paths: int = 1000,
         horizon: int = 252,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> pd.DataFrame:
         """
         Block bootstrap simulation preserving autocorrelation.
@@ -92,7 +94,7 @@ class MarketSimulator:
             idx = 0
             while remaining > 0:
                 block_size = min(rng.integers(5, 30), remaining, n - idx)
-                block = returns[idx:idx + block_size]
+                block = returns[idx : idx + block_size]
                 path.extend(block)
                 idx = rng.integers(0, n)
                 remaining -= block_size
@@ -105,7 +107,7 @@ class MarketSimulator:
         S0: float,
         mu: float,
         sigma: float,
-        lambd: float = 0.1,      # jumps per year
+        lambd: float = 0.1,  # jumps per year
         jump_mean: float = -0.05,
         jump_std: float = 0.1,
         T: int = 252,
@@ -115,7 +117,7 @@ class MarketSimulator:
         Merton Jump-Diffusion model (real markets have fat tails!).
         """
         rng = np.random.default_rng()
-        dt = 1/252
+        dt = 1 / 252
         steps = T
 
         paths = np.zeros((steps + 1, n_paths))
@@ -131,7 +133,7 @@ class MarketSimulator:
             jump_sizes = np.exp(rng.normal(jump_mean, jump_std, n_paths)) - 1
             jump_component = jumps * jump_sizes
 
-            paths[t] = paths[t-1] * np.exp(diffusion + jump_component)
+            paths[t] = paths[t - 1] * np.exp(diffusion + jump_component)
 
         dates = pd.bdate_range(start="today", periods=steps + 1)
         return pd.DataFrame(paths, index=dates)
@@ -139,7 +141,7 @@ class MarketSimulator:
     @staticmethod
     def stress_scenario(
         returns: pd.Series,
-        scenarios: Dict[str, Sequence[float]] = None,
+        scenarios: dict[str, Sequence[float]] = None,
     ) -> pd.DataFrame:
         """
         Pre-defined historical stress scenarios.
@@ -165,7 +167,9 @@ class MarketSimulator:
             equity_curve = (1 + shocked_returns).cumprod()
             results[name] = {
                 "final_return": equity_curve.iloc[-1] - 1,
-                "max_drawdown": ((equity_curve.cummax() - equity_curve) / equity_curve.cummax()).max(),
+                "max_drawdown": (
+                    (equity_curve.cummax() - equity_curve) / equity_curve.cummax()
+                ).max(),
                 "vs_baseline": equity_curve.iloc[-1] / base_equity.iloc[-1] - 1,
             }
 
@@ -180,9 +184,9 @@ class StrategySimulator:
     def monte_carlo_backtest(
         strategy_class,
         df: pd.DataFrame,
-        param_distributions: Dict[str, Any],
+        param_distributions: dict[str, Any],
         n_trials: int = 1000,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> pd.DataFrame:
         """
         Example:
@@ -205,14 +209,16 @@ class StrategySimulator:
 
             strategy = strategy_class(**params)
             signals = strategy.generate_signals(df)
-            equity = (1 + signals.shift(1) * df['Close'].pct_change()).cumprod()
+            equity = (1 + signals.shift(1) * df["Close"].pct_change()).cumprod()
 
-            results.append({
-                **params,
-                "total_return": equity.iloc[-1] - 1,
-                "cagr": (equity.iloc[-1]) ** (252 / len(equity)) - 1,
-                "max_dd": ((equity.cummax() - equity) / equity.cummax()).max(),
-                "sharpe": equity.pct_change().mean() / equity.pct_change().std() * np.sqrt(252),
-            })
+            results.append(
+                {
+                    **params,
+                    "total_return": equity.iloc[-1] - 1,
+                    "cagr": (equity.iloc[-1]) ** (252 / len(equity)) - 1,
+                    "max_dd": ((equity.cummax() - equity) / equity.cummax()).max(),
+                    "sharpe": equity.pct_change().mean() / equity.pct_change().std() * np.sqrt(252),
+                }
+            )
 
         return pd.DataFrame(results)

@@ -1,13 +1,14 @@
 # src/pyfund/data/storage.py
 from __future__ import annotations
 
-import pandas as pd
-from pathlib import Path
-from typing import Optional, Dict, Any, Union
-import pyarrow.parquet as pq
-import pyarrow as pa
-from datetime import datetime
 import hashlib
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 DEFAULT_BASE_PATH = Path("./cache/parquet")
 
@@ -15,7 +16,7 @@ DEFAULT_BASE_PATH = Path("./cache/parquet")
 class DataStorage:
     """
     High-performance, versioned Parquet storage for financial time-series data.
-    
+
     Features:
     - Automatic partitioning by ticker + date (optional)
     - Metadata support (source, fetched_at, version, etc.)
@@ -26,8 +27,8 @@ class DataStorage:
 
     def __init__(
         self,
-        base_path: Union[str, Path] = DEFAULT_BASE_PATH,
-        partition_by: Optional[str] = "ticker",  # None, "ticker", or "year/month"
+        base_path: str | Path = DEFAULT_BASE_PATH,
+        partition_by: str | None = "ticker",  # None, "ticker", or "year/month"
         compression: str = "zstd",  # Better than gzip: faster + smaller
     ):
         self.base_path = Path(base_path).resolve()
@@ -35,7 +36,7 @@ class DataStorage:
         self.partition_by = partition_by
         self.compression = compression
 
-    def _get_path(self, name: str, ticker: Optional[str] = None) -> Path:
+    def _get_path(self, name: str, ticker: str | None = None) -> Path:
         """Resolve final storage path with optional partitioning."""
         if self.partition_by == "ticker" and ticker:
             path = self.base_path / ticker
@@ -52,8 +53,8 @@ class DataStorage:
         self,
         df: pd.DataFrame,
         name: str,
-        ticker: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ticker: str | None = None,
+        metadata: dict[str, Any] | None = None,
         overwrite: bool = True,
     ) -> Path:
         """
@@ -121,10 +122,10 @@ class DataStorage:
     def load(
         self,
         name: str,
-        ticker: Optional[str] = None,
-        columns: Optional[list[str]] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        ticker: str | None = None,
+        columns: list[str] | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> pd.DataFrame:
         """
         Load DataFrame with optional filtering.
@@ -136,7 +137,9 @@ class DataStorage:
 
         filters = []
         if start_date or end_date:
-            if 'Date' not in pd.read_parquet(path, columns=[]).columns and isinstance(pd.read_parquet(path, columns=[]).index, pd.DatetimeIndex):
+            if "Date" not in pd.read_parquet(path, columns=[]).columns and isinstance(
+                pd.read_parquet(path, columns=[]).index, pd.DatetimeIndex
+            ):
                 # Index is Date
                 df = pd.read_parquet(path, columns=columns)
                 if start_date:
@@ -147,9 +150,9 @@ class DataStorage:
 
             # Column-based filtering
             if start_date:
-                filters.append(('Date', '>=', start_date))
+                filters.append(("Date", ">=", start_date))
             if end_date:
-                filters.append(('Date', '<=', end_date))
+                filters.append(("Date", "<=", end_date))
 
         df = pd.read_parquet(
             path,
@@ -158,13 +161,13 @@ class DataStorage:
         )
 
         # Restore proper index if saved as DatetimeIndex
-        if 'Date' in df.columns:
-            df = df.set_index('Date')
+        if "Date" in df.columns:
+            df = df.set_index("Date")
             df.index = pd.to_datetime(df.index)
 
         return df.sort_index()
 
-    def exists(self, name: str, ticker: Optional[str] = None) -> bool:
+    def exists(self, name: str, ticker: str | None = None) -> bool:
         return self._get_path(name, ticker=ticker).exists()
 
     def list_datasets(self) -> list[str]:

@@ -1,17 +1,19 @@
 # src/pyfundlib/cli.py
 from __future__ import annotations
 
-import click
-from pathlib import Path
-from datetime import datetime
 import logging
+from datetime import datetime
+from pathlib import Path
 
+import click
+
+from .automation.runner import AutomationRunner
 from .backtester.engine import Backtester
 from .ml.predictor import MLPredictor
 from .ml.tracking import tracker
-from .automation.runner import AutomationRunner
 from .utils.logger import add_file_handler
 from .utils.plotter import Plotter
+
 
 # Global CLI options
 class Config:
@@ -19,7 +21,9 @@ class Config:
         self.verbose = False
         self.output_dir = Path("results") / datetime.now().strftime("%Y%m%d_%H%M%S")
 
+
 pass_config = click.make_pass_decorator(Config, ensure=True)
+
 
 @click.group(invoke_without_command=True)
 @click.option("-v", "--verbose", is_flag=True, help="Enable verbose logging")
@@ -27,7 +31,7 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 @click.pass_context
 def cli(ctx, verbose: bool, output: str):
     """PyFundLib ⚡ - The Ultimate Algo Trading Framework
-    
+
     Open-source. Production-ready. Built for alpha.
     """
     ctx.obj = Config()
@@ -38,6 +42,7 @@ def cli(ctx, verbose: bool, output: str):
     # Setup logging
     if verbose:
         from .utils.logger import logger
+
         logger.setLevel(logging.DEBUG)
 
     add_file_handler(str(ctx.obj.output_dir), "cli.log")
@@ -69,7 +74,9 @@ def backtest(config, ticker: str, strategy: str, years: int, initial_capital: fl
     results = bt.run()
 
     # Save results
-    report_path = config.output_dir / f"backtest_{ticker}_{strategy}_{datetime.now().strftime('%H%M')}.html"
+    report_path = (
+        config.output_dir / f"backtest_{ticker}_{strategy}_{datetime.now().strftime('%H%M')}.html"
+    )
     results.generate_report(report_path)
     click.echo(click.style(f"Report → {report_path}", fg="blue"))
 
@@ -77,10 +84,15 @@ def backtest(config, ticker: str, strategy: str, years: int, initial_capital: fl
         Plotter.equity_curve(
             results.equity_curve,
             title=f"{ticker} - {strategy} - CAGR: {results.cagr:.1%} | MaxDD: {results.max_drawdown:.1%}",
-            save_path=config.output_dir / f"equity_{ticker}.png"
+            save_path=config.output_dir / f"equity_{ticker}.png",
         )
 
-    click.echo(click.style(f"Backtest complete! CAGR: {results.cagr:+.1%} | Sharpe: {results.sharpe:.2f}", bold=True))
+    click.echo(
+        click.style(
+            f"Backtest complete! CAGR: {results.cagr:+.1%} | Sharpe: {results.sharpe:.2f}",
+            bold=True,
+        )
+    )
 
 
 @cli.command()
@@ -144,6 +156,7 @@ def dashboard():
     """Launch Streamlit dashboard"""
     import subprocess
     import sys
+
     subprocess.call([sys.executable, "-m", "streamlit", "run", "examples/05_dashboard.py"])
 
 

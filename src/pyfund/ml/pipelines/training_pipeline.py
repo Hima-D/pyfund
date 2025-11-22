@@ -1,32 +1,34 @@
 # src/pyfundlib/ml/pipelines/training_pipeline.py
 from __future__ import annotations
 
-import os
-import mlflow
-import optuna
-import numpy as np
-import pandas as pd
-from typing import Any, Dict, List, Optional, Tuple, Union, Callable
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import accuracy_score, roc_auc_score, mean_squared_error
-from optuna.integration import MLflowCallback
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
+import mlflow
+import numpy as np
+import optuna
+import pandas as pd
+from optuna.integration import MLflowCallback
+from sklearn.metrics import accuracy_score, mean_squared_error, roc_auc_score
+from sklearn.model_selection import TimeSeriesSplit
+
+from ...utils.logger import get_logger
 from ..models.base_model import BaseMLModel
 from .feature_pipeline import FeaturePipeline
-from ...utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 MetricFunc = Callable[[np.ndarray, np.ndarray], float]
 
+
 @dataclass
 class TrainingResult:
     best_model: BaseMLModel
-    best_params: Dict[str, Any]
+    best_params: dict[str, Any]
     best_score: float
     trial_history: pd.DataFrame
-    feature_importance: Optional[pd.Series] = None
+    feature_importance: pd.Series | None = None
 
 
 class TrainingPipeline:
@@ -40,10 +42,10 @@ class TrainingPipeline:
         model_class: type[BaseMLModel],
         feature_pipeline: FeaturePipeline,
         task: str = "classification",  # or "regression"
-        metric: str = "auc",           # "accuracy", "rmse", "sharpe", etc.
+        metric: str = "auc",  # "accuracy", "rmse", "sharpe", etc.
         cv_splits: int = 5,
         n_trials: int = 100,
-        timeout: Optional[int] = 3600,
+        timeout: int | None = 3600,
         mlflow_experiment: str = "pyfundlib",
         random_state: int = 42,
     ):
@@ -97,7 +99,9 @@ class TrainingPipeline:
                 "max_depth": trial.suggest_int("max_depth", 5, 50),
                 "min_samples_split": trial.suggest_int("min_samples_split", 2, 20),
                 "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 10),
-                "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", 0.5, 0.8]),
+                "max_features": trial.suggest_categorical(
+                    "max_features", ["sqrt", "log2", 0.5, 0.8]
+                ),
             }
         else:
             params = {}
@@ -114,7 +118,11 @@ class TrainingPipeline:
             model.fit(X_train, y_train)
 
             if self.task == "classification":
-                pred = model.predict_proba(X_val)[:, 1] if hasattr(model, "predict_proba") else model.predict(X_val)
+                pred = (
+                    model.predict_proba(X_val)[:, 1]
+                    if hasattr(model, "predict_proba")
+                    else model.predict(X_val)
+                )
             else:
                 pred = model.predict(X_val)
 
@@ -130,7 +138,9 @@ class TrainingPipeline:
         project_name: str = "optuna_study",
     ) -> TrainingResult:
         """Run full training + optimization"""
-        logger.info(f"Starting TrainingPipeline | {self.model_class.__name__} | {self.n_trials} trials")
+        logger.info(
+            f"Starting TrainingPipeline | {self.model_class.__name__} | {self.n_trials} trials"
+        )
 
         # Apply features
         X = self.feature_pipeline.fit_transform(X_raw)
@@ -146,7 +156,9 @@ class TrainingPipeline:
 
         mlflow_callback = MLflowCallback(
             metric_name="cv_score",
-            mlflow_experiment_name=mlflow.get_experiment_by_name(mlflow.active_run().info.experiment_id if mlflow.active_run() else "Default").name,
+            mlflow_experiment_name=mlflow.get_experiment_by_name(
+                mlflow.active_run().info.experiment_id if mlflow.active_run() else "Default"
+            ).name,
         )
 
         study.optimize(
@@ -196,6 +208,7 @@ def train_xgboost_direction(X_raw: pd.DataFrame, y: pd.Series):
         n_trials=200,
     )
     return pipeline.run(X_raw, y, project_name="xgboost_direction")
+
 
 def train_lstm_returns(X_raw: pd.DataFrame, y: pd.Series):
     from ..models.lstm import LSTMModel

@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Create a dedicated pyfundlib logger (not root!)
 logger = logging.getLogger("pyfundlib")
@@ -20,17 +19,16 @@ if not logger.handlers:
 
     # Beautiful, compact format
     formatter = logging.Formatter(
-        fmt="%(asctime)s | %(levelname)8s | %(name)s | %(message)s",
-        datefmt="%H:%M:%S"
+        fmt="%(asctime)s | %(levelname)8s | %(name)s | %(message)s", datefmt="%H:%M:%S"
     )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """
     Get a child logger with proper naming.
-    
+
     Usage:
         logger = get_logger(__name__)           # e.g., pyfundlib.data.fetcher
         logger = get_logger("my_strategy")      # custom name
@@ -75,6 +73,7 @@ def add_file_handler(
 
 # Optional: Set log level from environment (great for production)
 import os
+
 if os.getenv("PYFUNDLIB_LOG_LEVEL") in ("DEBUG", "INFO", "WARNING", "ERROR"):
     logger.setLevel(os.getenv("PYFUNDLIB_LOG_LEVEL"))
     logger.info(f"Log level set to {os.getenv('PYFUNDLIB_LOG_LEVEL')} via env var")

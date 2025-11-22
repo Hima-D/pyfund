@@ -1,3 +1,9 @@
-from .statistical_validation import validate_strategy, print_validation
-from .statistical_tests import performance_summary, deflated_sharpe_ratio, probability_of_backtest_overfitting, walk_forward_sharpe
-from .statistical_tests import validator, print_report
+from .statistical_tests import (
+    deflated_sharpe_ratio,
+    performance_summary,
+    print_report,
+    probability_of_backtest_overfitting,
+    validator,
+    walk_forward_sharpe,
+)
+from .statistical_validation import print_validation, validate_strategy

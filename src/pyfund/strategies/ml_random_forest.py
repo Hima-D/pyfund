@@ -1,16 +1,18 @@
 # src/pyfund/strategies/ml_random_forest.py
+from typing import Any
+
 import pandas as pd
-import numpy as np
-from typing import Optional, Dict, Any
-from .base import BaseStrategy
-from ..ml.predictor import MLPredictor
+
 from ..data.features import FeatureEngineer
+from ..ml.predictor import MLPredictor
 from ..utils.logger import logger
+from .base import BaseStrategy
+
 
 class MLRandomForestStrategy(BaseStrategy):
     """
     Advanced Machine Learning Strategy using Random Forest (or any loaded model)
-    
+
     Features:
     - Automatic feature engineering fallback
     - Model version safety (handles missing/no model gracefully)
@@ -22,18 +24,18 @@ class MLRandomForestStrategy(BaseStrategy):
 
     default_params = {
         "model_name": "random_forest",
-        "confidence_threshold": 0.6,      # Only trade if prediction prob > 60%
-        "use_probability": True,          # Use predict_proba instead of hard predict
-        "min_feature_count": 10,          # Minimum features required
-        "fallback_to_rsi": True,          # Use RSI strategy if model fails
+        "confidence_threshold": 0.6,  # Only trade if prediction prob > 60%
+        "use_probability": True,  # Use predict_proba instead of hard predict
+        "min_feature_count": 10,  # Minimum features required
+        "fallback_to_rsi": True,  # Use RSI strategy if model fails
     }
 
-    def __init__(self, ticker: str, params: Optional[Dict[str, Any]] = None):
+    def __init__(self, ticker: str, params: dict[str, Any] | None = None):
         super().__init__({**self.default_params, **(params or {})})
         self.ticker = ticker.upper()
         self.predictor = MLPredictor()
         self.model = None
-        self.feature_names: Optional[list] = None
+        self.feature_names: list | None = None
         self.last_prediction_date = None
 
     def _load_model_safely(self) -> bool:
@@ -45,25 +47,29 @@ class MLRandomForestStrategy(BaseStrategy):
                 return True
         except Exception as e:
             logger.warning(f"Failed to load ML model for {self.ticker}: {e}")
-        
+
         self.model = None
         return False
 
     def _prepare_features(self, data: pd.DataFrame) -> pd.DataFrame:
         """Ensure data has proper features"""
         df = data.copy()
-        
+
         # If raw OHLCV, add technical features
         if set(df.columns) <= {"Open", "High", "Low", "Close", "Volume"}:
             df = FeatureEngineer.add_technical_features(df)
-        
+
         # Drop non-feature columns
-        feature_cols = [col for col in df.columns if col not in {"Open", "High", "Low", "Close", "Volume", "Adj Close"}]
-        
+        feature_cols = [
+            col
+            for col in df.columns
+            if col not in {"Open", "High", "Low", "Close", "Volume", "Adj Close"}
+        ]
+
         if len(feature_cols) < self.params["min_feature_count"]:
             logger.warning(f"Insufficient features for {self.ticker}: {len(feature_cols)} found")
             return pd.DataFrame()
-            
+
         X = df[feature_cols].dropna()
         self.feature_names = feature_cols
         return X
@@ -71,7 +77,7 @@ class MLRandomForestStrategy(BaseStrategy):
     def generate_signals(self, data: pd.DataFrame) -> pd.Series:
         """
         Generate high-quality ML-based trading signals
-        
+
         Returns:
             +1 → Strong buy (high confidence long)
              0 → Neutral / no confidence
@@ -85,6 +91,7 @@ class MLRandomForestStrategy(BaseStrategy):
                 if self.params["fallback_to_rsi"]:
                     logger.info(f"Falling back to RSI strategy for {self.ticker}")
                     from .rsi_mean_reversion import RSIMeanReversionStrategy
+
                     fallback = RSIMeanReversionStrategy()
                     return fallback.generate_signals(data)
                 else:
@@ -129,8 +136,10 @@ class MLRandomForestStrategy(BaseStrategy):
                 hard_pred = self.model.predict(X)
                 signals.loc[pred_index] = hard_pred
 
-            logger.info(f"ML signals generated for {self.ticker}: "
-                        f"Long={(signals==1).sum()}, Short={(signals==-1).sum()}, Flat={(signals==0).sum()}")
+            logger.info(
+                f"ML signals generated for {self.ticker}: "
+                f"Long={(signals==1).sum()}, Short={(signals==-1).sum()}, Flat={(signals==0).sum()}"
+            )
 
         except Exception as e:
             logger.error(f"Error generating ML signals for {self.ticker}: {e}")
@@ -150,8 +159,8 @@ if __name__ == "__main__":
     df = DataFetcher.get_price("AAPL", period="2y")
     strategy = MLRandomForestStrategy("AAPL", {"confidence_threshold": 0.55})
     signals = strategy.generate_signals(df)
-    
-    print(f"ML Strategy signals for AAPL:")
+
+    print("ML Strategy signals for AAPL:")
     print(f"Total signals: {len(signals[signals != 0])} non-zero")
     print(f"Current signal: {signals.iloc[-1]}")
     print(signals.tail(10))

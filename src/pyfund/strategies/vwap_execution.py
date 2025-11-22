@@ -1,17 +1,18 @@
 # src/pyfund/execution/vwap_execution.py
-import pandas as pd
-import numpy as np
-from typing import Optional, List, Dict, Tuple
 from datetime import datetime, time
+
+import pandas as pd
+
 from ..data.fetcher import DataFetcher
+
 
 class VWAPExecutor:
     """
     Volume-Weighted Average Price (VWAP) Execution Algorithm
-    
+
     Splits a large order into child orders proportional to historical/intraday volume profile
     to minimize market impact and achieve close to VWAP benchmark.
-    
+
     Features:
     - Historical volume profile (default: average of last 10 days)
     - Intraday adaptive scheduling
@@ -29,7 +30,7 @@ class VWAPExecutor:
         end_time: time = time(16, 0),
         days_profile: int = 10,
         urgency: float = 1.0,  # 1.0 = normal, >1 faster, <1 slower
-        pov_target: Optional[float] = None,  # e.g., 0.1 = 10% of volume
+        pov_target: float | None = None,  # e.g., 0.1 = 10% of volume
     ):
         self.ticker = ticker.upper()
         self.total_quantity = abs(total_quantity)
@@ -44,7 +45,7 @@ class VWAPExecutor:
         self.executed_qty = 0.0
         self.vwap_price = 0.0
         self.slippage_bps = 0.0
-        self.schedule: Dict[datetime, float] = {}
+        self.schedule: dict[datetime, float] = {}
 
     def _build_volume_profile(self) -> pd.Series:
         """Build average intraday volume profile from historical data"""
@@ -53,7 +54,7 @@ class VWAPExecutor:
             try:
                 df = DataFetcher.get_price(self.ticker, period=f"{i + 20}d", interval="5m")
                 df = df.between_time(self.start_time, self.end_time)
-                df['time'] = df.index.time
+                df["time"] = df.index.time
                 dfs.append(df)
             except:
                 continue
@@ -63,21 +64,26 @@ class VWAPExecutor:
             return pd.Series(1.0)
 
         combined = pd.concat(dfs)
-        volume_by_time = combined.groupby('time')['Volume'].mean()
+        volume_by_time = combined.groupby("time")["Volume"].mean()
         total_vol = volume_by_time.sum()
         profile = volume_by_time / total_vol
-        profile = profile.reindex(pd.Index([t.time() for t in pd.date_range("9:30", "16:00", freq="5T")], name="time"), fill_value=0.01)
+        profile = profile.reindex(
+            pd.Index([t.time() for t in pd.date_range("9:30", "16:00", freq="5T")], name="time"),
+            fill_value=0.01,
+        )
         profile /= profile.sum()  # renormalize
         return profile
 
-    def generate_schedule(self) -> Dict[datetime, float]:
+    def generate_schedule(self) -> dict[datetime, float]:
         """Generate execution schedule based on volume profile"""
         profile = self._build_volume_profile()
         adjusted_qty = self.total_quantity * self.urgency
 
         if self.pov_target:
             # POV mode: target % of market volume
-            current_vol = DataFetcher.get_price(self.ticker, period="1d", interval="1m")['Volume'].sum()
+            current_vol = DataFetcher.get_price(self.ticker, period="1d", interval="1m")[
+                "Volume"
+            ].sum()
             adjusted_qty = max(adjusted_qty, current_vol * self.pov_target * 0.9)
 
         today = pd.Timestamp.today().normalize()
@@ -103,10 +109,11 @@ class VWAPExecutor:
         """Simulate or send real order slice"""
         self.executed_qty += qty
         self.vwap_price = (
-            (self.vwap_price * (self.executed_qty - qty) + price * qty)
-            / self.executed_qty
+            self.vwap_price * (self.executed_qty - qty) + price * qty
+        ) / self.executed_qty
+        print(
+            f"[VWAP] Executed {qty:,.2f} @ {price:,.4f} | VWAP: {self.vwap_price:,.4f} | Filled: {self.executed_qty/self.total_quantity:.1%}"
         )
-        print(f"[VWAP] Executed {qty:,.2f} @ {price:,.4f} | VWAP: {self.vwap_price:,.4f} | Filled: {self.executed_qty/self.total_quantity:.1%}")
 
     def run(self, live: bool = False):
         """Run the VWAP execution (dry-run by default)"""
@@ -126,13 +133,15 @@ class VWAPExecutor:
 
             # Get current price
             try:
-                current_price = DataFetcher.get_price(self.ticker, period="1d", interval="1m")["Close"].iloc[-1]
+                current_price = DataFetcher.get_price(self.ticker, period="1d", interval="1m")[
+                    "Close"
+                ].iloc[-1]
             except:
                 current_price = 100.0  # fallback
 
             self.execute_slice(qty, current_price)
 
-        print(f"\nVWAP Execution Complete!")
+        print("\nVWAP Execution Complete!")
         print(f"Executed: {self.executed_qty:,.2f} / {self.total_quantity:,.2f}")
         print(f"Final VWAP: ${self.vwap_price:,.4f}")
 
@@ -141,13 +150,10 @@ class VWAPExecutor:
         else:
             print("Dry-run mode (no real orders sent)")
 
+
 # Quick test
 if __name__ == "__main__":
     executor = VWAPExecutor(
-        ticker="AAPL",
-        total_quantity=100000,
-        side="buy",
-        urgency=1.2,
-        pov_target=0.15
+        ticker="AAPL", total_quantity=100000, side="buy", urgency=1.2, pov_target=0.15
     )
     executor.run(live=False)

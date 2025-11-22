@@ -1,14 +1,15 @@
 # src/pyfundlib/ml/models/random_forest.py
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from typing import Union, Optional, Literal
-from sklearn.metrics import accuracy_score, roc_auc_score, mean_squared_error
+from sklearn.metrics import accuracy_score, mean_squared_error, roc_auc_score
 
-from .base_model import BaseMLModel
 from ...utils.logger import get_logger
+from .base_model import BaseMLModel
 
 logger = get_logger(__name__)
 
@@ -22,10 +23,10 @@ class RandomForestModel(BaseMLModel):
     def __init__(
         self,
         n_estimators: int = 500,
-        max_depth: Optional[int] = None,
+        max_depth: int | None = None,
         min_samples_split: int = 2,
         min_samples_leaf: int = 1,
-        max_features: Union[str, float, int] = "sqrt",
+        max_features: str | float | int = "sqrt",
         bootstrap: bool = True,
         task: Literal["classification", "regression"] = "classification",
         name: str = "random_forest",
@@ -61,12 +62,12 @@ class RandomForestModel(BaseMLModel):
 
     def fit(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
-        y: Union[pd.Series, np.ndarray],
+        X: pd.DataFrame | np.ndarray,
+        y: pd.Series | np.ndarray,
         *,
-        sample_weight: Optional[np.ndarray] = None,
-        eval_set: Optional[tuple] = None,
-    ) -> "RandomForestModel":
+        sample_weight: np.ndarray | None = None,
+        eval_set: tuple | None = None,
+    ) -> RandomForestModel:
         """
         Train the model with automatic metric tracking.
         """
@@ -107,11 +108,11 @@ class RandomForestModel(BaseMLModel):
         )
         return self
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         X = self._validate_input(X)
         return self.model.predict(X)
 
-    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         if self.task != "classification":
             raise NotImplementedError("predict_proba only available for classification")
         X = self._validate_input(X)
@@ -124,9 +125,10 @@ class RandomForestModel(BaseMLModel):
         importances = pd.Series(self.model.feature_importances_, index=self.feature_names_in_)
         return importances.sort_values(ascending=False).head(top_n)
 
-    def plot_feature_importance(self, top_n: int = 20, save_path: Optional[str] = None):
+    def plot_feature_importance(self, top_n: int = 20, save_path: str | None = None):
         """Quick importance plot"""
         import matplotlib.pyplot as plt
+
         imp = self.feature_importance(top_n)
         plt.figure(figsize=(10, 8))
         imp.plot(kind="barh", color="#2E86AB")

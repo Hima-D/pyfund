@@ -1,16 +1,16 @@
 # src/pyfundlib/ml/tracking.py
 from __future__ import annotations
 
-import mlflow
-from mlflow.tracking import MlflowClient
-from mlflow.entities import ViewType
-from typing import Optional, List, Dict, Any, Union
-import pandas as pd
 from pathlib import Path
-import warnings
+from typing import Any
 
-from .models.base_model import BaseMLModel
+import mlflow
+import pandas as pd
+from mlflow.entities import ViewType
+from mlflow.tracking import MlflowClient
+
 from ..utils.logger import get_logger
+from .models.base_model import BaseMLModel
 
 logger = get_logger(__name__)
 
@@ -24,7 +24,7 @@ class ModelTracker:
     def __init__(
         self,
         tracking_uri: str = "file://./mlruns",
-        registry_uri: Optional[str] = None,
+        registry_uri: str | None = None,
         experiment_name: str = "pyfundlib",
     ):
         mlflow.set_tracking_uri(tracking_uri)
@@ -48,11 +48,13 @@ class ModelTracker:
         self,
         model: BaseMLModel,
         artifact_path: str = "model",
-        run_name: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
+        run_name: str | None = None,
+        tags: dict[str, str] | None = None,
     ) -> str:
         """Log a pyfundlib model to MLflow with full metadata"""
-        with mlflow.start_run(run_name=run_name or f"{model.name}_{model.version}", experiment_id=self.experiment_id):
+        with mlflow.start_run(
+            run_name=run_name or f"{model.name}_{model.version}", experiment_id=self.experiment_id
+        ):
             # Log parameters & metrics from model
             mlflow.log_params(model.get_params())
             if model.metadata.performance_metrics:
@@ -63,7 +65,8 @@ class ModelTracker:
                 "model_name": model.name,
                 "version": model.version,
                 "author": model.metadata.author,
-                "ticker": ",".join([t for t in model.tags if t.upper() in ["AAPL", "SPY", "BTC"]]) or "multi",
+                "ticker": ",".join([t for t in model.tags if t.upper() in ["AAPL", "SPY", "BTC"]])
+                or "multi",
                 "task": model.tags[0] if model.tags else "unknown",
             }
             if tags:
@@ -87,7 +90,7 @@ class ModelTracker:
         self,
         model_name: str,
         stage: str = "Production",
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Get latest model version in given stage"""
         try:
             versions = self.client.get_latest_versions(model_name, stages=[stage])
@@ -101,8 +104,8 @@ class ModelTracker:
         self,
         model_name: str,
         stage: str = "Production",
-        version: Optional[int] = None,
-    ) -> Optional[BaseMLModel]:
+        version: int | None = None,
+    ) -> BaseMLModel | None:
         """Load a model from registry"""
         try:
             if version:
@@ -127,14 +130,16 @@ class ModelTracker:
         rows = []
         for m in models:
             for v in m.latest_versions:
-                rows.append({
-                    "name": m.name,
-                    "version": v.version,
-                    "stage": v.current_stage,
-                    "run_id": v.run_id,
-                    "tags": v.tags,
-                    "description": v.description,
-                })
+                rows.append(
+                    {
+                        "name": m.name,
+                        "version": v.version,
+                        "stage": v.current_stage,
+                        "run_id": v.run_id,
+                        "tags": v.tags,
+                        "description": v.description,
+                    }
+                )
         return pd.DataFrame(rows).sort_values(["name", "version"], ascending=[True, False])
 
     def promote_model(
@@ -155,20 +160,22 @@ class ModelTracker:
 
     def compare_models(
         self,
-        model_names: List[str],
+        model_names: list[str],
         metric: str = "auc",
     ) -> pd.DataFrame:
         """Compare performance across models"""
         runs = mlflow.search_runs(
             experiment_ids=[self.experiment_id],
-            filter_string=f"tags.model_name IN ({','.join([f'\\'{n}\\' for n in model_names])})",
+            filter_string=" OR ".join(f"tags.model_name = '{n}'" for n in model_names),
             run_view_type=ViewType.ACTIVE_ONLY,
         )
         if runs.empty:
             logger.warning("No runs found for comparison")
             return pd.DataFrame()
 
-        return runs[["tags.model_name", "tags.version", f"metrics.{metric}", "start_time"]].sort_values(f"metrics.{metric}", ascending=False)
+        return runs[
+            ["tags.model_name", "tags.version", f"metrics.{metric}", "start_time"]
+        ].sort_values(f"metrics.{metric}", ascending=False)
 
     def delete_model_version(self, model_name: str, version: int) -> None:
         """Delete a model version (use with care)"""

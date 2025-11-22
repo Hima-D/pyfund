@@ -1,26 +1,28 @@
 # src/pyfundlib/ml/pipelines/feature_pipeline.py
 from __future__ import annotations
 
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Any, Optional, Union, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, field
-import warnings
+from typing import Any
 
-from ...data.features import FeatureEngineer
-from ...indicators.rsi import rsi
+import numpy as np
+import pandas as pd
+
 from ...indicators.macd import macd
+from ...indicators.rsi import rsi
 from ...indicators.sma import sma
 from ...utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 @dataclass
 class PipelineStep:
     """A single transform step in the pipeline"""
+
     name: str
     func: Callable[[pd.DataFrame], pd.DataFrame]
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
 
     def __call__(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -39,17 +41,17 @@ class FeaturePipeline:
     def __init__(self, name: str = "default_pipeline", version: str = "1.0"):
         self.name = name
         self.version = version
-        self.steps: List[PipelineStep] = []
+        self.steps: list[PipelineStep] = []
         self.fitted = False
-        self.feature_names_: Optional[List[str]] = None
+        self.feature_names_: list[str] | None = None
 
     def add_step(
         self,
         name: str,
         func: Callable[[pd.DataFrame], pd.DataFrame],
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
         enabled: bool = True,
-    ) -> "FeaturePipeline":
+    ) -> FeaturePipeline:
         """Add a custom step"""
         step = PipelineStep(name=name, func=func, params=params or {}, enabled=enabled)
         self.steps.append(step)
@@ -57,11 +59,11 @@ class FeaturePipeline:
 
     def add_technical_indicators(
         self,
-        rsi_periods: List[int] = None,
-        sma_periods: List[int] = None,
+        rsi_periods: list[int] = None,
+        sma_periods: list[int] = None,
         macd_params: tuple = (12, 26, 9),
         include_volume: bool = True,
-    ) -> "FeaturePipeline":
+    ) -> FeaturePipeline:
         """Add standard technical indicators"""
         rsi_periods = rsi_periods or [14]
         sma_periods = sma_periods or [20, 50, 200]
@@ -94,10 +96,10 @@ class FeaturePipeline:
 
     def add_returns_and_volatility(
         self,
-        return_periods: List[int] = None,
-        vol_windows: List[int] = None,
+        return_periods: list[int] = None,
+        vol_windows: list[int] = None,
         annualize_vol: bool = True,
-    ) -> "FeaturePipeline":
+    ) -> FeaturePipeline:
         return_periods = return_periods or [1, 5, 10, 20]
         vol_windows = vol_windows or [20, 60]
 
@@ -124,9 +126,9 @@ class FeaturePipeline:
 
     def add_lags(
         self,
-        columns: List[str],
-        lags: List[int] = None,
-    ) -> "FeaturePipeline":
+        columns: list[str],
+        lags: list[int] = None,
+    ) -> FeaturePipeline:
         lags = lags or [1, 2, 3, 5, 10]
 
         def lag_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -140,10 +142,10 @@ class FeaturePipeline:
 
     def add_rolling_stats(
         self,
-        columns: List[str],
-        windows: List[int] = None,
-        stats: List[str] = None,
-    ) -> "FeaturePipeline":
+        columns: list[str],
+        windows: list[int] = None,
+        stats: list[str] = None,
+    ) -> FeaturePipeline:
         windows = windows or [5, 10, 20, 60]
         stats = stats or ["mean", "std", "min", "max"]
 
@@ -167,9 +169,9 @@ class FeaturePipeline:
 
     def add_zscore(
         self,
-        columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
         window: int = 60,
-    ) -> "FeaturePipeline":
+    ) -> FeaturePipeline:
         columns = columns or ["Close"]
 
         def zscore_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -186,8 +188,8 @@ class FeaturePipeline:
         self,
         name: str,
         func: Callable[[pd.DataFrame], pd.DataFrame],
-        params: Optional[Dict[str, Any]] = None,
-    ) -> "FeaturePipeline":
+        params: dict[str, Any] | None = None,
+    ) -> FeaturePipeline:
         """Add any custom function"""
         self.add_step(name, func, params)
         return self
@@ -202,7 +204,9 @@ class FeaturePipeline:
         self.feature_names_ = [c for c in df_out.columns if c not in df.columns]
         self.fitted = True
 
-        logger.info(f"FeaturePipeline '{self.name}' applied | {len(self.feature_names_)} features created")
+        logger.info(
+            f"FeaturePipeline '{self.name}' applied | {len(self.feature_names_)} features created"
+        )
         return df_out
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -215,7 +219,7 @@ class FeaturePipeline:
             df_out = step(df_out)
         return df_out[list(df.columns) + self.feature_names_]
 
-    def get_feature_names(self) -> List[str]:
+    def get_feature_names(self) -> list[str]:
         if not self.fitted:
             raise RuntimeError("Pipeline not fitted")
         return self.feature_names_

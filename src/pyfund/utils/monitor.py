@@ -2,16 +2,18 @@
 from __future__ import annotations
 
 import time
-import psutil
-import pandas as pd
+from collections.abc import Callable
 from datetime import datetime
-from typing import Dict, Any, Optional, Callable
-from threading import Thread, Event
-import logging
+from threading import Event, Thread
+from typing import Any
+
+import pandas as pd
+import psutil
 
 from .logger import get_logger
 
 logger = get_logger(__name__)
+
 
 class Monitor:
     """
@@ -26,15 +28,15 @@ class Monitor:
 
     def __init__(self, refresh_interval: int = 5):
         self.refresh_interval = refresh_interval
-        self.metrics: Dict[str, Any] = {}
+        self.metrics: dict[str, Any] = {}
         self.history: pd.DataFrame = pd.DataFrame()
         self.stop_event = Event()
-        self.thread: Optional[Thread] = None
+        self.thread: Thread | None = None
 
         # Built-in system metrics
         self.register_metric("cpu_percent", psutil.cpu_percent)
         self.register_metric("ram_percent", psutil.virtual_memory().percent)
-        self.register_metric("disk_usage", lambda: psutil.disk_usage('/').percent)
+        self.register_metric("disk_usage", lambda: psutil.disk_usage("/").percent)
         self.register_metric("timestamp", datetime.now)
 
     def register_metric(self, name: str, func: Callable[[], Any]) -> None:
@@ -55,16 +57,16 @@ class Monitor:
         self.history = pd.concat([self.history, pd.DataFrame([row])], ignore_index=True)
         self._log_summary(row)
 
-    def _log_summary(self, row: Dict[str, Any]) -> None:
+    def _log_summary(self, row: dict[str, Any]) -> None:
         """Pretty console dashboard"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f" PYFUNDLIB MONITOR | {row.get('datetime', '')}")
-        print("="*60)
+        print("=" * 60)
         for k, v in row.items():
             if k == "datetime":
                 continue
             print(f" {k:20} | {v}")
-        print("-"*60)
+        print("-" * 60)
 
     def start(self, daemon: bool = True) -> None:
         """Start background monitoring thread"""
@@ -88,7 +90,7 @@ class Monitor:
             self.thread.join()
         logger.info("Monitor stopped")
 
-    def get_latest(self) -> Dict[str, Any]:
+    def get_latest(self) -> dict[str, Any]:
         """Get most recent metrics"""
         if self.history.empty:
             return {}
@@ -100,6 +102,7 @@ class Monitor:
             logger.error(f"Metric {metric} not found")
             return
         import matplotlib.pyplot as plt
+
         data = self.history[metric].tail(window)
         plt.figure(figsize=(12, 6))
         data.plot(title=f"{metric} Over Time")
@@ -114,20 +117,26 @@ monitor = Monitor(refresh_interval=10)
 # Example: How users extend it
 def track_portfolio_value():
     from pyfundlib.execution.live import LiveExecutor
+
     try:
         executor = LiveExecutor(dry_run=True)
         return executor.get_account().get("portfolio_value", 0)
     except:
         return 0
 
+
 def track_active_signals():
     # Replace with your strategy's current signal
     return "RSI Oversold → BUY AAPL"
 
+
 # Register in your main/live script
 monitor.register_metric("portfolio_value", track_portfolio_value)
 monitor.register_metric("current_signal", track_active_signals)
-monitor.register_metric("uptime_seconds", lambda: time.time() - monitor.start_time if hasattr(monitor, "start_time") else 0)
+monitor.register_metric(
+    "uptime_seconds",
+    lambda: time.time() - monitor.start_time if hasattr(monitor, "start_time") else 0,
+)
 
 # Start it!
 monitor.start()

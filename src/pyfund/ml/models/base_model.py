@@ -1,16 +1,15 @@
 # src/pyfundlib/ml/models/base_model.py
 from __future__ import annotations
 
-import json
-import cloudpickle
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, Literal, get_type_hints
-from dataclasses import dataclass, asdict
+from typing import Any, Literal
 
-import pandas as pd
+import cloudpickle
 import numpy as np
+import pandas as pd
 
 from ...utils.logger import get_logger
 
@@ -22,24 +21,25 @@ ModelStatus = Literal["trained", "untrained", "failed"]
 @dataclass
 class ModelMetadata:
     """Rich metadata stored with every model"""
+
     model_name: str
     version: str
-    trained_at: Optional[str] = None
+    trained_at: str | None = None
     author: str = "pyfundlib"
-    description: Optional[str] = None
-    training_samples: Optional[int] = None
-    features_used: Optional[list[str]] = None
-    target_column: Optional[str] = None
-    performance_metrics: Optional[Dict[str, float]] = None
-    hyperparameters: Optional[Dict[str, Any]] = None
+    description: str | None = None
+    training_samples: int | None = None
+    features_used: list[str] | None = None
+    target_column: str | None = None
+    performance_metrics: dict[str, float] | None = None
+    hyperparameters: dict[str, Any] | None = None
     status: ModelStatus = "untrained"
-    tags: Optional[list[str]] = None
+    tags: list[str] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ModelMetadata":
+    def from_dict(cls, data: dict[str, Any]) -> ModelMetadata:
         return cls(**data)
 
 
@@ -53,8 +53,8 @@ class BaseMLModel(ABC):
         self,
         name: str,
         version: str = "1.0.0",
-        description: Optional[str] = None,
-        tags: Optional[list[str]] = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ):
         self.name = name
         self.version = version
@@ -70,26 +70,26 @@ class BaseMLModel(ABC):
         )
 
         self._is_fitted = False
-        self.feature_names_in_: Optional[list[str]] = None
+        self.feature_names_in_: list[str] | None = None
 
     # ======================= Core Abstract Methods =======================
     @abstractmethod
-    def fit(self, X: Union[pd.DataFrame, np.ndarray], y: Union[pd.Series, np.ndarray]) -> "BaseMLModel":
+    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> BaseMLModel:
         """Train the model. Returns self for chaining."""
         pass
 
     @abstractmethod
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Return raw predictions (regression) or probabilities (classification)"""
         pass
 
     @abstractmethod
-    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Return class probabilities (for classifiers only)"""
         pass
 
     # ======================= Serialization (Best-in-Class) =======================
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: str | Path) -> None:
         """Save model + metadata + feature names with cloudpickle (handles anything)"""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +109,7 @@ class BaseMLModel(ABC):
         logger.info(f"Model '{self.name}' v{self.version} saved → {path}")
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "BaseMLModel":
+    def load(cls, path: str | Path) -> BaseMLModel:
         """Load and return a fully restored model"""
         path = Path(path)
         if not path.exists():
@@ -126,7 +126,7 @@ class BaseMLModel(ABC):
         return model
 
     # ======================= Utilities & Safety =======================
-    def _validate_input(self, X: Union[pd.DataFrame, np.ndarray]) -> pd.DataFrame:
+    def _validate_input(self, X: pd.DataFrame | np.ndarray) -> pd.DataFrame:
         """Internal: convert to DataFrame and validate features"""
         if isinstance(X, np.ndarray):
             if self.feature_names_in_ is None:
@@ -143,7 +143,7 @@ class BaseMLModel(ABC):
 
         return X
 
-    def get_params(self, deep: bool = True) -> Dict[str, Any]:
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get hyperparameters (scikit-learn compatible)"""
         params = {}
         for key in self.__dict__:
@@ -154,7 +154,7 @@ class BaseMLModel(ABC):
                 params[key] = val
         return params
 
-    def set_params(self, **params) -> "BaseMLModel":
+    def set_params(self, **params) -> BaseMLModel:
         """Set hyperparameters"""
         for key, val in params.items():
             setattr(self, key, val)
@@ -174,22 +174,26 @@ class BaseMLModel(ABC):
         print("=" * 50)
 
     # ======================= Optional: MLflow Integration Hook =======================
-    def log_to_mlflow(self, run_name: Optional[str] = None) -> None:
+    def log_to_mlflow(self, run_name: str | None = None) -> None:
         """One-click MLflow logging (optional but elite)"""
         try:
             import mlflow
             from mlflow.models import infer_signature
 
-            with mlflow.start_run(run_name=run_name or f"{self.name}_{datetime.now().strftime('%Y%m%d_%H%M')}"):
+            with mlflow.start_run(
+                run_name=run_name or f"{self.name}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+            ):
                 mlflow.log_params(self.get_params())
                 if self.metadata.performance_metrics:
                     mlflow.log_metrics(self.metadata.performance_metrics)
-                mlflow.set_tags({
-                    "model_name": self.name,
-                    "version": self.version,
-                    "author": self.metadata.author,
-                    "tags": ",".join(self.tags),
-                })
+                mlflow.set_tags(
+                    {
+                        "model_name": self.name,
+                        "version": self.version,
+                        "author": self.metadata.author,
+                        "tags": ",".join(self.tags),
+                    }
+                )
 
                 # Auto-infer signature if possible
                 if hasattr(self, "_last_X") and hasattr(self, "_last_y"):

@@ -2,16 +2,15 @@
 from __future__ import annotations
 
 import pandas as pd
-from typing import Optional, Union
 
 
 def sma(
     series: pd.Series,
     window: int,
     *,
-    min_periods: Optional[int] = None,
+    min_periods: int | None = None,
     center: bool = False,
-    fillna: Optional[float] = None,
+    fillna: float | None = None,
 ) -> pd.Series:
     """
     Simple Moving Average (SMA) — with smart defaults and flexibility.
@@ -66,10 +65,11 @@ class SMA:
     """
     Callable SMA class — perfect for hyperparameter tuning.
     """
+
     def __init__(
         self,
         window: int,
-        min_periods: Optional[int] = None,
+        min_periods: int | None = None,
         center: bool = False,
     ):
         self.window = window

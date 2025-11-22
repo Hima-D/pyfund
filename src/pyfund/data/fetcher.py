@@ -1,18 +1,17 @@
 # src/pyfund/data/fetcher.py
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Any, Literal
+
 import pandas as pd
-from typing import Literal, Optional, Sequence, Union, Dict, Any
-from datetime import datetime
 import yfinance as yf
 
-from ..utils.cache import cached_function
 from ..core.broker_registry import broker_registry  # You'll create this next if not exists
-
+from ..utils.cache import cached_function
 
 Interval = Literal[
-    "1m", "2m", "5m", "15m", "30m", "60m", "90m",
-    "1h", "1d", "5d", "1wk", "1mo", "3mo"
+    "1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"
 ]
 
 Source = Literal["yfinance", "alpaca", "zerodha", "ibkr", "binance", "polygon"]
@@ -24,13 +23,16 @@ class DataFetcher:
     """
 
     @staticmethod
-    @cached_function(dir_name="price_data", key_lambda=lambda *a, **kw: f"{kw.get('source','yf')}_{a[0] if isinstance(a[0], str) else '_'.join(a[0])}_{kw.get('interval','1d')}_{kw.get('period','2y') or kw.get('start','')}")
+    @cached_function(
+        dir_name="price_data",
+        key_lambda=lambda *a, **kw: f"{kw.get('source','yf')}_{a[0] if isinstance(a[0], str) else '_'.join(a[0])}_{kw.get('interval','1d')}_{kw.get('period','2y') or kw.get('start','')}",
+    )
     def get_price(
-        ticker: Union[str, Sequence[str]],
+        ticker: str | Sequence[str],
         *,
-        period: Optional[str] = "2y",
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        period: str | None = "2y",
+        start: str | None = None,
+        end: str | None = None,
         interval: Interval = "1d",
         source: Source = "yfinance",
         prepost: bool = False,
@@ -93,7 +95,7 @@ class DataFetcher:
                 pass
 
         # Final cleanup
-        df = df[['Open', 'High', 'Low', 'Close', 'Volume']].dropna(how="all")
+        df = df[["Open", "High", "Low", "Close", "Volume"]].dropna(how="all")
         if not keep_na:
             df = df.dropna()
 
@@ -110,16 +112,16 @@ class DataFetcher:
         """
         df = DataFetcher.get_price(tickers, **kwargs)
         if isinstance(df.columns, pd.MultiIndex):
-            return df['Close'].sort_index(axis=1)
-        return df['Close']
+            return df["Close"].sort_index(axis=1)
+        return df["Close"]
 
 
 # ———————————————————————— Default yfinance implementation ————————————————————————
 def _fetch_yfinance(
-    ticker: Union[str, Sequence[str]],
-    period: Optional[str] = None,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
+    ticker: str | Sequence[str],
+    period: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
     interval: str = "1d",
     prepost: bool = False,
     auto_adjust: bool = True,

@@ -1,9 +1,10 @@
 # src/pyfundlib/risk/__init__.py
 from __future__ import annotations
 
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 import pandas as pd
-from typing import Optional, Union, Dict, Any
 from scipy.stats import norm, t
 
 
@@ -17,7 +18,7 @@ class RiskManager:
         returns: pd.Series,
         confidence_level: float = 0.99,
         method: str = "parametric",
-        window: Optional[int] = None,
+        window: int | None = None,
     ) -> float:
         """
         Calculate Value at Risk (VaR).
@@ -54,7 +55,12 @@ class RiskManager:
             z = norm.ppf(1 - confidence_level)
             skew = returns.skew()
             kurt = returns.kurtosis()
-            z_adj = z + (z**2 - 1) * skew / 6 + (z**3 - 3*z) * (kurt - 3) / 24 - (2*z**3 - 5*z) * (skew**2) / 36
+            z_adj = (
+                z
+                + (z**2 - 1) * skew / 6
+                + (z**3 - 3 * z) * (kurt - 3) / 24
+                - (2 * z**3 - 5 * z) * (skew**2) / 36
+            )
             return returns.mean() + z_adj * returns.std()
 
         else:
@@ -95,7 +101,7 @@ class RiskManager:
         account_value: float,
         risk_per_trade: float = 0.01,
         stop_loss_pct: float = 0.05,
-        volatility: Optional[float] = None,
+        volatility: float | None = None,
     ) -> float:
         """
         Kelly / Volatility-adjusted position sizing.
@@ -126,7 +132,7 @@ class RiskManager:
         return min(scaling, leverage_cap)
 
     @staticmethod
-    def risk_metrics(equity_curve: pd.Series) -> Dict[str, float]:
+    def risk_metrics(equity_curve: pd.Series) -> dict[str, float]:
         """One-call risk summary"""
         returns = equity_curve.pct_change().dropna()
         cagr = (equity_curve.iloc[-1] / equity_curve.iloc[0]) ** (252 / len(equity_curve)) - 1

@@ -1,17 +1,19 @@
 # src/pyfund/portfolio/risk_parity.py
-import pandas as pd
+
 import numpy as np
-from typing import List, Dict, Optional, Tuple
+import pandas as pd
 from scipy.optimize import minimize
+
 from ..data.fetcher import DataFetcher
+
 
 class RiskParityAllocator:
     """
     Risk Parity Portfolio Allocator
-    
+
     Allocates capital so each asset contributes equally to total portfolio risk.
     True "Holy Grail" of portfolio construction — maximum diversification.
-    
+
     Methods:
     - Inverse Volatility (heuristic, fast)
     - Full Risk Parity (exact, using covariance + optimization)
@@ -20,9 +22,9 @@ class RiskParityAllocator:
 
     def __init__(
         self,
-        tickers: List[str],
+        tickers: list[str],
         lookback_days: int = 252,
-        risk_budget: Optional[List[float]] = None,  # Custom risk targets per asset
+        risk_budget: list[float] | None = None,  # Custom risk targets per asset
         method: str = "full",  # "inverse_vol", "full", "erc"
         max_leverage: float = 3.0,
         rebalance_freq: str = "monthly",
@@ -34,8 +36,8 @@ class RiskParityAllocator:
         self.max_leverage = max_leverage
         self.rebalance_freq = rebalance_freq
 
-        self.weights: Dict[str, float] = {}
-        self.risk_contributions: Dict[str, float] = {}
+        self.weights: dict[str, float] = {}
+        self.risk_contributions: dict[str, float] = {}
 
     def _fetch_returns(self) -> pd.DataFrame:
         """Fetch price data and compute log returns"""
@@ -43,7 +45,7 @@ class RiskParityAllocator:
         for ticker in self.tickers:
             try:
                 df = DataFetcher.get_price(ticker, period=f"{self.lookback_days + 100}d")
-                data[ticker] = df['Close']
+                data[ticker] = df["Close"]
             except Exception as e:
                 print(f"Failed to fetch {ticker}: {e}")
         prices = pd.DataFrame(data).dropna()
@@ -72,9 +74,9 @@ class RiskParityAllocator:
         else:
             target = np.ones(len(weights)) / len(weights)
         diff = rc - target * rc.sum()
-        return (diff ** 2).sum()
+        return (diff**2).sum()
 
-    def allocate(self) -> Dict[str, float]:
+    def allocate(self) -> dict[str, float]:
         """Main allocation function"""
         returns = self._fetch_returns()
         if returns.empty or len(returns.columns) < 2:
@@ -88,8 +90,8 @@ class RiskParityAllocator:
         else:
             # Full Risk Parity optimization
             constraints = [
-                {'type': 'eq', 'fun': lambda w: w.sum() - 1.0},
-                {'type': 'ineq', 'fun': lambda w: w},  # long-only
+                {"type": "eq", "fun": lambda w: w.sum() - 1.0},
+                {"type": "ineq", "fun": lambda w: w},  # long-only
             ]
             bounds = [(0.0, 1.0) for _ in range(len(self.tickers))]
             initial = np.ones(len(self.tickers)) / len(self.tickers)
@@ -98,10 +100,10 @@ class RiskParityAllocator:
                 fun=self._full_risk_parity_objective,
                 x0=initial,
                 args=(cov_matrix,),
-                method='SLSQP',
+                method="SLSQP",
                 bounds=bounds,
                 constraints=constraints,
-                options={'ftol': 1e-9, 'disp': False}
+                options={"ftol": 1e-9, "disp": False},
             )
 
             if not result.success:
@@ -118,7 +120,7 @@ class RiskParityAllocator:
 
         # Final weights
         self.weights = {ticker: float(w) for ticker, w in zip(self.tickers, weights)}
-        
+
         # Risk contributions
         rc = self._risk_contribution(weights, cov_matrix)
         rc_pct = rc / rc.sum()
@@ -131,10 +133,9 @@ class RiskParityAllocator:
         if not self.weights:
             self.allocate()
 
-        df = pd.DataFrame({
-            "Weight": self.weights,
-            "Risk_Contribution": self.risk_contributions
-        }).round(4)
+        df = pd.DataFrame(
+            {"Weight": self.weights, "Risk_Contribution": self.risk_contributions}
+        ).round(4)
         df = df.sort_values("Risk_Contribution", ascending=False)
         df.loc["TOTAL"] = [df["Weight"].abs().sum(), 1.0]
         return df
@@ -143,11 +144,9 @@ class RiskParityAllocator:
 # Quick test
 if __name__ == "__main__":
     rp = RiskParityAllocator(
-        tickers=["SPY", "TLT", "GLD", "DBC", "VNQ"],
-        method="full",
-        max_leverage=2.0
+        tickers=["SPY", "TLT", "GLD", "DBC", "VNQ"], method="full", max_leverage=2.0
     )
-    
+
     weights = rp.allocate()
     print("Risk Parity Portfolio Weights:")
     print(rp.summary())

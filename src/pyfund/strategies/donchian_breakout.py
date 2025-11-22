@@ -1,36 +1,38 @@
 # src/pyfund/strategies/donchian_breakout.py
-import pandas as pd
+from typing import Any
+
 import numpy as np
-from typing import Optional, Dict, Any
+import pandas as pd
+
 from .base import BaseStrategy
-from ..utils.logger import logger
+
 
 class DonchianBreakoutStrategy(BaseStrategy):
     """
     Classic Donchian Channel Breakout System (The Turtle Trading Rules Foundation)
-    
+
     Rules:
     - Long when price > highest high of last N periods
     - Short when price < lowest low of last N periods
     - Exit long on lowest low of last M periods (M < N)
     - Exit short on highest high of last M periods
-    
+
     Pure trend following — works on commodities, forex, crypto, equities.
     Still profitable in 2025.
     """
 
     default_params = {
-        "entry_period": 55,      # Classic Turtle: 55-day breakout
-        "exit_period": 20,       # Exit on 20-day low/high
-        "use_atr_stop": True,    # Add ATR trailing stop
+        "entry_period": 55,  # Classic Turtle: 55-day breakout
+        "exit_period": 20,  # Exit on 20-day low/high
+        "use_atr_stop": True,  # Add ATR trailing stop
         "atr_period": 20,
         "atr_multiplier": 2.0,
-        "pyramiding": 4,         # Add up to 4 units as trend continues
-        "unit_risk_pct": 0.01,   # 1% risk per unit (Turtle N-based sizing)
-        "max_position": 1.0,     # Final position size multiplier
+        "pyramiding": 4,  # Add up to 4 units as trend continues
+        "unit_risk_pct": 0.01,  # 1% risk per unit (Turtle N-based sizing)
+        "max_position": 1.0,  # Final position size multiplier
     }
 
-    def __init__(self, params: Optional[Dict[str, Any]] = None):
+    def __init__(self, params: dict[str, Any] | None = None):
         super().__init__({**self.default_params, **(params or {})})
         self.current_position = 0.0
         self.units_added = 0
@@ -40,7 +42,7 @@ class DonchianBreakoutStrategy(BaseStrategy):
     def generate_signals(self, data: pd.DataFrame) -> pd.Series:
         """
         Generate Donchian breakout signals
-        
+
         Returns:
             +1 → Long
             -1 → Short
@@ -49,9 +51,9 @@ class DonchianBreakoutStrategy(BaseStrategy):
         if len(data) < self.params["entry_period"] + 10:
             return pd.Series(0, index=data.index)
 
-        high = data['High']
-        low = data['Low']
-        close = data['Close']
+        high = data["High"]
+        low = data["Low"]
+        close = data["Close"]
 
         # Donchian Channels
         upper_channel = high.rolling(window=self.params["entry_period"]).max()
@@ -70,15 +72,15 @@ class DonchianBreakoutStrategy(BaseStrategy):
 
         for i in range(1, len(data)):
             idx = data.index[i]
-            prev_idx = data.index[i-1]
+            prev_idx = data.index[i - 1]
 
             price = close.iloc[i]
-            prev_price = close.iloc[i-1]
+            prev_price = close.iloc[i - 1]
 
-            long_entry = price > upper_channel.iloc[i-1]
-            short_entry = price < lower_channel.iloc[i-1]
-            long_exit = price < exit_long_channel.iloc[i-1]
-            short_exit = price > exit_short_channel.iloc[i-1]
+            long_entry = price > upper_channel.iloc[i - 1]
+            short_entry = price < lower_channel.iloc[i - 1]
+            long_exit = price < exit_long_channel.iloc[i - 1]
+            short_exit = price > exit_short_channel.iloc[i - 1]
 
             # ATR trailing stop
             if self.params["use_atr_stop"] and position != 0:
@@ -136,21 +138,23 @@ class DonchianBreakoutStrategy(BaseStrategy):
         return signals
 
     def _calculate_atr(self, data: pd.DataFrame, period: int) -> pd.Series:
-        high = data['High']
-        low = data['Low']
-        close = data['Close'].shift(1)
-        
+        high = data["High"]
+        low = data["Low"]
+        close = data["Close"].shift(1)
+
         tr0 = abs(high - low)
         tr1 = abs(high - close)
         tr2 = abs(low - close)
-        
+
         tr = pd.concat([tr0, tr1, tr2], axis=1).max(axis=1)
         atr = tr.rolling(window=period).mean()
         return atr
 
     def __repr__(self) -> str:
-        return (f"DonchianBreakout({self.params['entry_period']}/{self.params['exit_period']}, "
-                f"pos={self.current_position:.1f})")
+        return (
+            f"DonchianBreakout({self.params['entry_period']}/{self.params['exit_period']}, "
+            f"pos={self.current_position:.1f})"
+        )
 
 
 # Quick test
@@ -158,17 +162,15 @@ if __name__ == "__main__":
     from ..data.fetcher import DataFetcher
 
     df = DataFetcher.get_price("BTC-USD", period="5y")
-    strategy = DonchianBreakoutStrategy({
-        "entry_period": 55,
-        "exit_period": 20,
-        "pyramiding": 4
-    })
+    strategy = DonchianBreakoutStrategy({"entry_period": 55, "exit_period": 20, "pyramiding": 4})
 
     signals = strategy.generate_signals(df)
-    
+
     trades = signals.diff().abs() == 1
-    print(f"Donchian Breakout on BTC-USD")
+    print("Donchian Breakout on BTC-USD")
     print(f"Total trades: {trades.sum()}")
-    print(f"Final position: {'LONG' if signals.iloc[-1] > 0 else 'SHORT' if signals.iloc[-1] < 0 else 'FLAT'}")
-    print(f"Win rate approximation: ~40% (classic trend following)")
+    print(
+        f"Final position: {'LONG' if signals.iloc[-1] > 0 else 'SHORT' if signals.iloc[-1] < 0 else 'FLAT'}"
+    )
+    print("Win rate approximation: ~40% (classic trend following)")
     print(signals.value_counts())

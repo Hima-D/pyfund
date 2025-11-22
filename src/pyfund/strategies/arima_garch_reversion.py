@@ -1,22 +1,28 @@
+import warnings
+
 import numpy as np
 import pandas as pd
-from typing import Tuple
-from statsmodels.tsa.arima.model import ARIMA
 from arch import arch_model
-import warnings
+from statsmodels.tsa.arima.model import ARIMA
+
 warnings.filterwarnings("ignore")
+
 
 class ARIMAGARCHStrategy:
     """Universal Statistical Arbitrage — Works on ANY asset, ANY timeframe"""
+
     def __init__(
         self,
-        p: int = 1, d: int = 1, q: int = 1,
-        garch_p: int = 1, garch_q: int = 1,
+        p: int = 1,
+        d: int = 1,
+        q: int = 1,
+        garch_p: int = 1,
+        garch_q: int = 1,
         lookback: int = 252,
         z_entry: float = 2.0,
         z_exit: float = 0.5,
         use_log_prices: bool = True,
-        min_periods: int = 100
+        min_periods: int = 100,
     ):
         self.p, self.d, self.q = p, d, q
         self.garch_p, self.garch_q = garch_p, garch_q
@@ -29,21 +35,23 @@ class ARIMAGARCHStrategy:
     def _prepare_series(self, prices: pd.Series) -> pd.Series:
         return np.log(prices) if self.use_log_prices else prices.copy()
 
-    def fit_forecast(self, prices: pd.Series) -> Tuple[float, float, float]:
+    def fit_forecast(self, prices: pd.Series) -> tuple[float, float, float]:
         if len(prices) < self.min_periods:
             return prices.iloc[-1], prices.std(), prices.std()
 
-        series = self._prepare_series(prices)[-self.lookback:]
+        series = self._prepare_series(prices)[-self.lookback :]
 
         try:
             model = ARIMA(series, order=(self.p, self.d, self.q))
-            fitted = model.fit(method='statespace', disp=0)
+            fitted = model.fit(method="statespace", disp=0)
             forecast = fitted.forecast(steps=1).iloc[0]
-            residuals = fitted.resid[-self.lookback//2:]
+            residuals = fitted.resid[-self.lookback // 2 :]
 
             if len(residuals) > 50 and residuals.std() > 1e-8:
-                garch = arch_model(residuals, vol='Garch', p=self.garch_p, q=self.garch_q, dist='Normal')
-                garch_fit = garch.fit(disp='off')
+                garch = arch_model(
+                    residuals, vol="Garch", p=self.garch_p, q=self.garch_q, dist="Normal"
+                )
+                garch_fit = garch.fit(disp="off")
                 cond_vol = np.sqrt(garch_fit.conditional_volatility.iloc[-1])
             else:
                 cond_vol = residuals.std()
@@ -57,7 +65,7 @@ class ARIMAGARCHStrategy:
 
         return forecast, residual_std, cond_vol
 
-    def generate_signal(self, prices: pd.Series) -> Tuple[int, float, dict]:
+    def generate_signal(self, prices: pd.Series) -> tuple[int, float, dict]:
         if len(prices) < self.min_periods:
             return 0, 0.0, {"error": "insufficient_data"}
 
@@ -75,9 +83,13 @@ class ARIMAGARCHStrategy:
         elif abs(z_score) < self.z_exit:
             signal = 0
 
-        return signal, confidence, {
-            "z_score": round(z_score, 3),
-            "forecast": round(forecast, 4),
-            "cond_vol": round(cond_vol, 6),
-            "confidence": round(confidence, 3)
-        }
+        return (
+            signal,
+            confidence,
+            {
+                "z_score": round(z_score, 3),
+                "forecast": round(forecast, 4),
+                "cond_vol": round(cond_vol, 6),
+                "confidence": round(confidence, 3),
+            },
+        )

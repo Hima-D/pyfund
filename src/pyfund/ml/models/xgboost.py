@@ -1,14 +1,15 @@
 # src/pyfundlib/ml/models/xgboost.py
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from typing import Optional, Union, Literal, Dict, Any
-from sklearn.metrics import accuracy_score, roc_auc_score, mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, roc_auc_score
 
-from .base_model import BaseMLModel
 from ...utils.logger import get_logger
+from .base_model import BaseMLModel
 
 logger = get_logger(__name__)
 
@@ -31,7 +32,7 @@ class XGBoostModel(BaseMLModel):
         reg_alpha: float = 0.0,
         reg_lambda: float = 1.0,
         early_stopping_rounds: int = 50,
-        scale_pos_weight: Optional[float] = None,
+        scale_pos_weight: float | None = None,
         name: str = "xgboost",
         version: str = "1.0",
         **xgb_kwargs,
@@ -86,13 +87,13 @@ class XGBoostModel(BaseMLModel):
 
     def fit(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
-        y: Union[pd.Series, np.ndarray],
+        X: pd.DataFrame | np.ndarray,
+        y: pd.Series | np.ndarray,
         *,
-        eval_set: Optional[list] = None,
-        sample_weight: Optional[np.ndarray] = None,
+        eval_set: list | None = None,
+        sample_weight: np.ndarray | None = None,
         verbose: int = 100,
-    ) -> "XGBoostModel":
+    ) -> XGBoostModel:
         X = self._validate_input(X)
         y = np.array(y)
 
@@ -150,11 +151,11 @@ class XGBoostModel(BaseMLModel):
         )
         return self
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         X = self._validate_input(X)
         return self.model.predict(X)
 
-    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         if self.task != "classification":
             raise NotImplementedError("predict_proba only for classification")
         X = self._validate_input(X)
@@ -171,16 +172,21 @@ class XGBoostModel(BaseMLModel):
         booster = self.model.get_booster()
         importance = booster.get_score(importance_type=importance_type)
         imp_df = pd.Series(importance).sort_values(ascending=False).head(top_n)
-        return imp_df.reindex(self.feature_names_in_, fill_value=0).sort_values(ascending=False).head(top_n)
+        return (
+            imp_df.reindex(self.feature_names_in_, fill_value=0)
+            .sort_values(ascending=False)
+            .head(top_n)
+        )
 
     def plot_feature_importance(
         self,
         importance_type: str = "gain",
         top_n: int = 20,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ):
         """Beautiful importance plot"""
         import matplotlib.pyplot as plt
+
         imp = self.feature_importance(importance_type, top_n)
         plt.figure(figsize=(10, 8))
         imp.plot(kind="barh", color="#F18F01")

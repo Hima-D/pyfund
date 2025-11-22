@@ -1,18 +1,18 @@
 # src/pyfundlib/backtester/engine.py
 from __future__ import annotations
 
-import pandas as pd
-import numpy as np
-from typing import Optional, Dict, Any, Union, List
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 from ..data.fetcher import DataFetcher
-from ..strategies.base import BaseStrategy
 from ..reporting.perf_report import PerformanceReport
-from ..utils.plotter import Plotter
-from ..utils.logger import get_logger
 from ..risk import RiskManager
+from ..strategies.base import BaseStrategy
+from ..utils.logger import get_logger
+from ..utils.plotter import Plotter
 
 logger = get_logger(__name__)
 
@@ -20,10 +20,11 @@ logger = get_logger(__name__)
 @dataclass
 class BacktestResult:
     """Container for all backtest outputs"""
+
     equity_curve: pd.Series
     signals: pd.Series
     trades: pd.DataFrame
-    metrics: Dict[str, float]
+    metrics: dict[str, float]
     data: pd.DataFrame
 
 
@@ -35,13 +36,13 @@ class Backtester:
     def __init__(
         self,
         strategy: BaseStrategy,
-        ticker: Optional[str] = None,
-        data: Optional[pd.DataFrame] = None,
+        ticker: str | None = None,
+        data: pd.DataFrame | None = None,
         initial_capital: float = 100_000,
-        commission: float = 0.001,           # 0.1%
-        slippage: float = 0.0005,            # 5 bps
-        position_sizing: float = 1.0,        # 100% exposure
-        risk_per_trade: float = 0.01,        # Kelly/volatility parity later
+        commission: float = 0.001,  # 0.1%
+        slippage: float = 0.0005,  # 5 bps
+        position_sizing: float = 1.0,  # 100% exposure
+        risk_per_trade: float = 0.01,  # Kelly/volatility parity later
         name: str = "backtest",
     ):
         self.strategy = strategy
@@ -86,13 +87,15 @@ class Backtester:
 
         # Full metrics
         metrics = RiskManager.risk_metrics(equity)
-        metrics.update({
-            "total_return": (equity.iloc[-1] / equity.iloc[0]) - 1,
-            "cagr": (equity.iloc[-1] / equity.iloc[0]) ** (252 / len(equity)) - 1,
-            "win_rate": (trades["pnl"] > 0).mean() if len(trades) > 0 else 0,
-            "num_trades": len(trades),
-            "avg_trade_duration": trades["duration"].mean() if len(trades) > 0 else 0,
-        })
+        metrics.update(
+            {
+                "total_return": (equity.iloc[-1] / equity.iloc[0]) - 1,
+                "cagr": (equity.iloc[-1] / equity.iloc[0]) ** (252 / len(equity)) - 1,
+                "win_rate": (trades["pnl"] > 0).mean() if len(trades) > 0 else 0,
+                "num_trades": len(trades),
+                "avg_trade_duration": trades["duration"].mean() if len(trades) > 0 else 0,
+            }
+        )
 
         result = BacktestResult(
             equity_curve=equity,
@@ -102,7 +105,9 @@ class Backtester:
             data=self.data,
         )
 
-        logger.info(f"Backtest complete | CAGR: {metrics['cagr']:+.1%} | Sharpe: {metrics.get('sharpe', 0):.2f} | MaxDD: {metrics['max_drawdown']:.1%}")
+        logger.info(
+            f"Backtest complete | CAGR: {metrics['cagr']:+.1%} | Sharpe: {metrics.get('sharpe', 0):.2f} | MaxDD: {metrics['max_drawdown']:.1%}"
+        )
 
         return result
 
@@ -117,15 +122,19 @@ class Backtester:
                 # Entry
                 if entry_price is not None:
                     # Close previous
-                    pnl = direction * (self.data["Close"].iloc[date] / entry_price - 1) - 2 * (self.commission + self.slippage)
-                    trades.append({
-                        "entry_date": entry_date,
-                        "exit_date": self.data.index[date],
-                        "direction": "long" if direction > 0 else "short",
-                        "pnl": pnl,
-                        "return": pnl,
-                        "duration": (self.data.index[date] - entry_date).days,
-                    })
+                    pnl = direction * (self.data["Close"].iloc[date] / entry_price - 1) - 2 * (
+                        self.commission + self.slippage
+                    )
+                    trades.append(
+                        {
+                            "entry_date": entry_date,
+                            "exit_date": self.data.index[date],
+                            "direction": "long" if direction > 0 else "short",
+                            "pnl": pnl,
+                            "return": pnl,
+                            "duration": (self.data.index[date] - entry_date).days,
+                        }
+                    )
                 # New entry
                 entry_price = self.data["Close"].iloc[date]
                 entry_date = self.data.index[date]
@@ -136,21 +145,23 @@ class Backtester:
             last_date = self.data.index[-1]
             last_price = self.data["Close"].iloc[-1]
             pnl = direction * (last_price / entry_price - 1) - 2 * (self.commission + self.slippage)
-            trades.append({
-                "entry_date": entry_date,
-                "exit_date": last_date,
-                "direction": "long" if direction > 0 else "short",
-                "pnl": pnl,
-                "return": pnl,
-                "duration": (last_date - entry_date).days,
-            })
+            trades.append(
+                {
+                    "entry_date": entry_date,
+                    "exit_date": last_date,
+                    "direction": "long" if direction > 0 else "short",
+                    "pnl": pnl,
+                    "return": pnl,
+                    "duration": (last_date - entry_date).days,
+                }
+            )
 
         return pd.DataFrame(trades)
 
     def report(
         self,
-        result: Optional[BacktestResult] = None,
-        save_dir: Optional[Path] = None,
+        result: BacktestResult | None = None,
+        save_dir: Path | None = None,
         show_plot: bool = True,
     ) -> None:
         """Generate beautiful report"""
@@ -164,7 +175,7 @@ class Backtester:
         Plotter.equity_curve(
             result.equity_curve,
             title=f"{self.name} | CAGR: {result.metrics['cagr']:+.1%} | MaxDD: {result.metrics['max_drawdown']:.1%}",
-            save_path=save_dir / "equity_curve.png"
+            save_path=save_dir / "equity_curve.png",
         )
 
         # Full performance report
@@ -184,6 +195,6 @@ class Backtester:
 
         logger.info(f"Full report saved → {save_dir}")
 
-    def summary(self) -> Dict[str, float]:
+    def summary(self) -> dict[str, float]:
         result = self.run()
         return result.metrics

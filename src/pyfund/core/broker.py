@@ -1,12 +1,11 @@
 # src/pyfund/core/broker.py
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Literal, Union
-from enum import Enum
-import pandas as pd
-from datetime import datetime
 import logging
+from abc import ABC, abstractmethod
+from typing import Any, Literal
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +17,26 @@ BrokerMode = Literal["live", "paper", "backtest"]
 
 class BrokerError(Exception):
     """Base exception for all broker-related errors"""
+
     pass
 
 
 class AuthenticationError(BrokerError):
     """Raised when broker authentication fails"""
+
     pass
 
 
 class OrderError(BrokerError):
     """Raised when order placement fails"""
+
     pass
 
 
 class Broker(ABC):
     """
     Universal Broker Interface - The Gold Standard
-    
+
     One interface → works with Zerodha, Alpaca, Interactive Brokers, Binance, Upstox, etc.
     Zero code changes when switching brokers.
     """
@@ -67,14 +69,14 @@ class Broker(ABC):
     def get_price(
         self,
         ticker: str,
-        period: Optional[str] = None,
-        interval: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        period: str | None = None,
+        interval: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> pd.DataFrame:
         """
         Fetch historical price data
-        
+
         Returns standardized DataFrame with columns:
         ['Open', 'High', 'Low', 'Close', 'Volume']
         Index: DatetimeIndex (timezone-aware if possible)
@@ -82,12 +84,12 @@ class Broker(ABC):
         pass
 
     @abstractmethod
-    def get_balance(self) -> Dict[str, float]:
+    def get_balance(self) -> dict[str, float]:
         """Return cash + margin balances"""
         pass
 
     @abstractmethod
-    def get_positions(self) -> Dict[str, Dict[str, Any]]:
+    def get_positions(self) -> dict[str, dict[str, Any]]:
         """
         Return current positions with full details
         Example: {"RELIANCE": {"qty": 100, "avg_price": 2500.0, "pnl": 5000.0}}
@@ -101,10 +103,10 @@ class Broker(ABC):
         qty: float,
         side: OrderSide,
         order_type: OrderType = "market",
-        price: Optional[float] = None,
+        price: float | None = None,
         time_in_force: TimeInForce = "day",
-        tag: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tag: str | None = None,
+    ) -> dict[str, Any]:
         """
         Place order and return order confirmation
         Should raise OrderError on failure
@@ -121,7 +123,7 @@ class Broker(ABC):
         pass
 
     @abstractmethod
-    def get_open_orders(self) -> List[Dict[str, Any]]:
+    def get_open_orders(self) -> list[dict[str, Any]]:
         pass
 
     def __enter__(self):
@@ -138,6 +140,7 @@ class Broker(ABC):
     def _safe_call(self, func, *args, **kwargs):
         """Retry wrapper with exponential backoff"""
         import time
+
         for attempt in range(self.max_retries):
             try:
                 return func(*args, **kwargs)
@@ -145,7 +148,7 @@ class Broker(ABC):
                 if attempt == self.max_retries - 1:
                     logger.error(f"Failed after {self.max_retries} attempts: {e}")
                     raise
-                wait = (2 ** attempt) * 0.5
+                wait = (2**attempt) * 0.5
                 logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
                 time.sleep(wait)
 

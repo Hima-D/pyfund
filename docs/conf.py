@@ -4,30 +4,30 @@ import sys
 from datetime import datetime
 
 # Add project root to path so Sphinx can import pyfundlib
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath("../src"))
 
 # -- Project information -----------------------------------------------------
-project = 'PyFundLib'
-copyright = f'{datetime.now().year}, Himanshu Dixit'
-author = 'Himanshu Dixit'
-release = '1.0.0'
+project = "PyFundLib"
+copyright = f"{datetime.now().year}, Himanshu Dixit"
+author = "Himanshu Dixit"
+release = "1.0.0"
 
 # -- General configuration ---------------------------------------------------
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',        # Google/NumPy style docstrings
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.autosummary',
-    'sphinx_autodoc_typehints',   # Beautiful type hints
-    'myst_parser',                # Markdown support
-    'sphinx_copybutton',          # Copy code buttons
-    'sphinxext.opengraph',        # Sexy social previews
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",  # Google/NumPy style docstrings
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.autosummary",
+    "sphinx_autodoc_typehints",  # Beautiful type hints
+    "myst_parser",  # Markdown support
+    "sphinx_copybutton",  # Copy code buttons
+    "sphinxext.opengraph",  # Sexy social previews
 ]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # Napoleon settings (Google style docstrings)
 napoleon_google_docstring = True
@@ -48,8 +48,8 @@ typehints_fully_qualified = False
 always_document_param_types = True
 
 # -- Options for HTML output -------------------------------------------------
-html_theme = 'furo'  # The most beautiful modern theme
-html_static_path = ['_static']
+html_theme = "furo"  # The most beautiful modern theme
+html_static_path = ["_static"]
 html_title = "PyFundLib ⚡"
 html_logo = "_static/logo.png"  # Add your logo!
 html_favicon = "_static/favicon.ico"
@@ -87,20 +87,20 @@ myst_enable_extensions = [
 
 # -- Autodoc settings -------------------------------------------------------
 autodoc_default_options = {
-    'members': True,
-    'member-order': 'bysource',
-    'special-members': '__init__',
-    'undoc-members': True,
-    'exclude-members': '__weakref__'
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
 }
 
 autosummary_generate = True
 
 # -- Intersphinx ------------------------------------------------------------
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'torch': ('https://pytorch.org/docs/stable/', None),
-    'xgboost': ('https://xgboost.readthedocs.io/en/latest/', None),
+    "python": ("https://docs.python.org/3", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+    "xgboost": ("https://xgboost.readthedocs.io/en/latest/", None),
 }

@@ -1,18 +1,20 @@
 # src/pyfund/utils/plotter.py
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import seaborn as sns
 from pathlib import Path
-from typing import Optional, Sequence, Dict, Any
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 # Set a clean, professional style once
 plt.style.use("seaborn-v0_8-whitegrid")
 sns.set_palette("deep")
 plt.rcParams["figure.figsize"] = (14, 8)
-plt.rcParams["axes.prop_cycle"] = plt.cycler(color=["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#4C9A2A"])
+plt.rcParams["axes.prop_cycle"] = plt.cycler(
+    color=["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#4C9A2A"]
+)
 
 
 class Plotter:
@@ -23,10 +25,10 @@ class Plotter:
     @staticmethod
     def equity_curve(
         equity: pd.Series,
-        benchmark: Optional[pd.Series] = None,
-        trades: Optional[pd.DataFrame] = None,
+        benchmark: pd.Series | None = None,
+        trades: pd.DataFrame | None = None,
         title: str = "Strategy Equity Curve",
-        save_path: Optional[Path] = None,
+        save_path: Path | None = None,
         show: bool = True,
     ) -> plt.Figure:
         """
@@ -48,11 +50,25 @@ class Plotter:
             sells = trades[trades["side"] == "sell"]
 
             if not buys.empty:
-                ax.scatter(buys["entry_date"], equity_norm.loc[buys["entry_date"]], 
-                          marker="^", color="green", s=100, label="Buy", zorder=5)
+                ax.scatter(
+                    buys["entry_date"],
+                    equity_norm.loc[buys["entry_date"]],
+                    marker="^",
+                    color="green",
+                    s=100,
+                    label="Buy",
+                    zorder=5,
+                )
             if not sells.empty:
-                ax.scatter(sells["exit_date"], equity_norm.loc[sells["exit_date"]], 
-                          marker="v", color="red", s=100, label="Sell", zorder=5)
+                ax.scatter(
+                    sells["exit_date"],
+                    equity_norm.loc[sells["exit_date"]],
+                    marker="v",
+                    color="red",
+                    s=100,
+                    label="Sell",
+                    zorder=5,
+                )
 
         ax.set_title(title, fontsize=20, fontweight="bold", pad=20)
         ax.set_ylabel("Portfolio Value (%)", fontsize=14)
@@ -83,7 +99,7 @@ class Plotter:
     def drawdown(
         equity: pd.Series,
         title: str = "Drawdown Waterfall",
-        save_path: Optional[Path] = None,
+        save_path: Path | None = None,
     ) -> plt.Figure:
         cum_ret = (1 + equity.pct_change()).cumprod()
         running_max = cum_ret.cummax()
@@ -107,12 +123,18 @@ class Plotter:
     def returns_distribution(
         returns: pd.Series,
         title: str = "Daily Returns Distribution",
-        save_path: Optional[Path] = None,
+        save_path: Path | None = None,
     ) -> plt.Figure:
         fig, ax = plt.subplots(figsize=(12, 7))
         returns.hist(bins=80, alpha=0.8, color="#2E86AB", edgecolor="white", ax=ax)
         ax.axvline(returns.mean(), color="green", linewidth=2, label=f"Mean: {returns.mean():.2%}")
-        ax.axvline(returns.median(), color="orange", linewidth=2, linestyle="--", label=f"Median: {returns.median():.2%}")
+        ax.axvline(
+            returns.median(),
+            color="orange",
+            linewidth=2,
+            linestyle="--",
+            label=f"Median: {returns.median():.2%}",
+        )
 
         ax.set_title(title, fontsize=18, fontweight="bold")
         ax.set_xlabel("Daily Return")
@@ -130,9 +152,11 @@ class Plotter:
         returns: pd.Series,
         window: int = 252,
         title: str = "Rolling Sharpe Ratio (252d)",
-        save_path: Optional[Path] = None,
+        save_path: Path | None = None,
     ) -> plt.Figure:
-        rolling_sharpe = returns.rolling(window).mean() / returns.rolling(window).std() * np.sqrt(252)
+        rolling_sharpe = (
+            returns.rolling(window).mean() / returns.rolling(window).std() * np.sqrt(252)
+        )
 
         fig, ax = plt.subplots(figsize=(16, 6))
         rolling_sharpe.plot(ax=ax, lw=2, color="#4C9A2A")

@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import pickle
 import zlib
-from pathlib import Path
-from typing import Callable, Any, Optional
-from functools import wraps
-import logging
+from collections.abc import Callable
 from datetime import datetime, timedelta
+from functools import wraps
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
 
 def stable_hash(obj: Any) -> str:
     """Deterministic hash for any picklable object"""
@@ -18,16 +20,18 @@ def stable_hash(obj: Any) -> str:
     compressed = zlib.compress(pickled)
     return hashlib.sha256(compressed).hexdigest()
 
+
 class CachedFunction:
     """
     Production-ready, safe, configurable cache decorator.
     """
+
     def __init__(
         self,
         dir_name: str,
         *,
-        expire_days: Optional[int] = 30,
-        max_size_mb: Optional[int] = 5000,  # 5GB default
+        expire_days: int | None = 30,
+        max_size_mb: int | None = 5000,  # 5GB default
         compress: bool = True,
     ):
         self.cache_dir = Path("./cache") / dir_name
@@ -46,11 +50,11 @@ class CachedFunction:
     def _enforce_size_limit(self):
         """Remove oldest files if over size limit"""
         files = sorted(self.cache_dir.iterdir(), key=lambda p: p.stat().st_mtime)
-        total_size = sum(f.stat().st_size for f in files) / (1024 ** 2)  # MB
+        total_size = sum(f.stat().st_size for f in files) / (1024**2)  # MB
 
         while total_size > self.max_size_mb and len(files) > 1:
             oldest = files.pop(0)
-            size_removed = oldest.stat().st_size / (1024 ** 2)
+            size_removed = oldest.stat().st_size / (1024**2)
             oldest.unlink(missing_ok=True)
             total_size -= size_removed
             logger.debug(f"Cache pruned: {oldest.name}")
@@ -107,6 +111,7 @@ class CachedFunction:
         wrapper.cache_dir = self.cache_dir
         wrapper.clear_cache = lambda: [f.unlink() for f in self.cache_dir.glob("*.pkl*")]
         return wrapper
+
 
 # Convenience decorator
 def cached_function(

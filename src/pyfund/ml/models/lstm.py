@@ -1,20 +1,21 @@
 # src/pyfundlib/ml/models/lstm.py
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
-from torch.optim import Adam
-from torch.utils.data import Dataset, DataLoader
-from typing import Optional, Union, Literal, Tuple
+from typing import Literal
+
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn as nn
 from sklearn.preprocessing import StandardScaler
-from pathlib import Path
+from torch.optim import Adam
+from torch.utils.data import DataLoader, Dataset
 
-from .base_model import BaseMLModel
 from ...utils.logger import get_logger
+from .base_model import BaseMLModel
 
 logger = get_logger(__name__)
+
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int):
@@ -26,10 +27,7 @@ class TimeSeriesDataset(Dataset):
         return len(self.X) - self.seq_len
 
     def __getitem__(self, idx):
-        return (
-            self.X[idx:idx + self.seq_len],
-            self.y[idx + self.seq_len]
-        )
+        return (self.X[idx : idx + self.seq_len], self.y[idx + self.seq_len])
 
 
 class LSTMModel(BaseMLModel, nn.Module):
@@ -102,8 +100,8 @@ class LSTMModel(BaseMLModel, nn.Module):
 
     def fit(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
-        y: Union[pd.Series, np.ndarray],
+        X: pd.DataFrame | np.ndarray,
+        y: pd.Series | np.ndarray,
         *,
         epochs: int = 100,
         batch_size: int = 64,
@@ -111,7 +109,7 @@ class LSTMModel(BaseMLModel, nn.Module):
         patience: int = 15,
         validation_split: float = 0.2,
         verbose: bool = True,
-    ) -> "LSTMModel":
+    ) -> LSTMModel:
         X = np.array(X)
         y = np.array(y).reshape(-1, self.output_size)
 
@@ -130,7 +128,7 @@ class LSTMModel(BaseMLModel, nn.Module):
         optimizer = Adam(self.parameters(), lr=lr)
         criterion = nn.MSELoss() if self.task == "regression" else nn.BCEWithLogitsLoss()
 
-        best_loss = float('inf')
+        best_loss = float("inf")
         patience_counter = 0
 
         self.train()
@@ -151,7 +149,9 @@ class LSTMModel(BaseMLModel, nn.Module):
             val_loss = self._validate(val_loader, criterion)
 
             if verbose and (epoch % 10 == 0 or epoch == epochs - 1):
-                logger.info(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss/len(train_loader):.6f} | Val Loss: {val_loss:.6f}")
+                logger.info(
+                    f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss/len(train_loader):.6f} | Val Loss: {val_loss:.6f}"
+                )
 
             # Early stopping
             if val_loss < best_loss - 1e-6:
@@ -168,7 +168,9 @@ class LSTMModel(BaseMLModel, nn.Module):
             self.load_state_dict(self.best_state_dict)
 
         self._is_fitted = True
-        self.feature_names_in_ = list(range(input_size)) if isinstance(X, np.ndarray) else list(X.columns)
+        self.feature_names_in_ = (
+            list(range(input_size)) if isinstance(X, np.ndarray) else list(X.columns)
+        )
         self.metadata.training_samples = len(y)
         self.metadata.performance_metrics = {"final_val_loss": best_loss}
         self.metadata.status = "trained"
@@ -185,7 +187,7 @@ class LSTMModel(BaseMLModel, nn.Module):
                 loss += criterion(outputs, batch_y).item()
         return loss / len(loader)
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted first")
 
@@ -203,7 +205,7 @@ class LSTMModel(BaseMLModel, nn.Module):
                 preds.append(out.cpu().numpy())
         return np.concatenate(preds)
 
-    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
         if self.task != "classification":
             raise NotImplementedError("predict_proba only for classification")
         return self.predict(X)

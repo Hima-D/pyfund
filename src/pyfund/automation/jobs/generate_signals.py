@@ -1,27 +1,25 @@
 # src/pyfundlib/automation/jobs/generate_signals.py
 from __future__ import annotations
 
-import pandas as pd
 from datetime import datetime
-from typing import Dict, Any
-import numpy as np
+from typing import Any
 
-from ...ml.predictor import MLPredictor
+import numpy as np
+import pandas as pd
+
 from ...data.fetcher import DataFetcher
 from ...data.storage import DataStorage
+from ...ml.predictor import MLPredictor
 from ...utils.logger import get_logger
-from ...reporting.perf_report import PerformanceReport  # optional for signal quality
 
 logger = get_logger(__name__)
 
 # Configurable watchlist — can be loaded from YAML/DB
-WATCHLIST = [
-    "AAPL", "MSFT", "GOOGL", "NVDA", "TSLA",
-    "SPY", "QQQ", "IWM", "GLD", "BTC-USD"
-]
+WATCHLIST = ["AAPL", "MSFT", "GOOGL", "NVDA", "TSLA", "SPY", "QQQ", "IWM", "GLD", "BTC-USD"]
 
 # Signal threshold (adjust per strategy)
 SIGNAL_THRESHOLD = 0.6  # |signal| > 0.6 → strong buy/sell
+
 
 def generate_signals_job() -> None:
     """
@@ -32,7 +30,7 @@ def generate_signals_job() -> None:
 
     predictor = MLPredictor()
     storage = DataStorage()
-    signals_today: Dict[str, Dict[str, Any]] = {}
+    signals_today: dict[str, dict[str, Any]] = {}
 
     for ticker in WATCHLIST:
         try:
@@ -76,7 +74,11 @@ def generate_signals_job() -> None:
                 "position": int(position),
                 "strength": strength,
                 "confidence": round(abs(signal), 3),
-                "model_version": predictor.get_latest(ticker).version if predictor.get_latest(ticker) else "unknown",
+                "model_version": (
+                    predictor.get_latest(ticker).version
+                    if predictor.get_latest(ticker)
+                    else "unknown"
+                ),
             }
 
             signals_today[ticker] = signal_record
@@ -112,10 +114,11 @@ def generate_signals_job() -> None:
 def send_alert(ticker: str, direction: str, confidence: float) -> None:
     """Send real-time alert via Telegram, Discord, Email, etc."""
     message = f"🚨 {direction} SIGNAL\n{ticker}\nConfidence: {confidence:.1%}\nTime: {datetime.now().strftime('%H:%M:%S')}"
-    
+
     # Replace with your real notifier
     try:
         import telegram  # pip install python-telegram-bot
+
         bot = telegram.Bot(token="YOUR_TOKEN")
         bot.send_message(chat_id="@your_channel", text=message)
     except:

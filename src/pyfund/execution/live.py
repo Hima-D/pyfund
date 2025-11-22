@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import time
-from typing import Literal, Dict, Any, Optional, Union
 from dataclasses import dataclass
+from typing import Any, Literal
+
 import pandas as pd
 
 from ..core.broker_registry import broker_registry
@@ -15,26 +16,28 @@ Side = Literal["buy", "sell"]
 OrderType = Literal["market", "limit", "stop", "stop_limit"]
 TimeInForce = Literal["day", "gtc", "opg", "ioc", "fok"]
 
+
 @dataclass
 class OrderRequest:
     ticker: str
-    qty: Union[float, int]
+    qty: float | int
     side: Side
     type: OrderType = "market"
-    limit_price: Optional[float] = None
-    stop_price: Optional[float] = None
+    limit_price: float | None = None
+    stop_price: float | None = None
     time_in_force: TimeInForce = "day"
-    client_order_id: Optional[str] = None
+    client_order_id: str | None = None
     extended_hours: bool = False
+
 
 @dataclass
 class OrderResponse:
     order_id: str
     status: str
     filled_qty: float
-    filled_price: Optional[float] = None
-    submitted_at: Optional[str] = None
-    raw: Optional[Dict[str, Any]] = None
+    filled_price: float | None = None
+    submitted_at: str | None = None
+    raw: dict[str, Any] | None = None
 
 
 class LiveExecutor:
@@ -47,7 +50,7 @@ class LiveExecutor:
         self,
         broker: str = "alpaca",
         dry_run: bool = True,
-        default_account: Optional[str] = None,
+        default_account: str | None = None,
     ):
         self.broker_name = broker.lower()
         self.dry_run = dry_run
@@ -57,11 +60,13 @@ class LiveExecutor:
         self.client = broker_registry.get_broker_client(self.broker_name)
 
         if self.dry_run:
-            logger.warning(f"LiveExecutor initialized in DRY-RUN mode for {self.broker_name.upper()}")
+            logger.warning(
+                f"LiveExecutor initialized in DRY-RUN mode for {self.broker_name.upper()}"
+            )
         else:
             logger.info(f"LiveExecutor connected to LIVE {self.broker_name.upper()} broker")
 
-    def place_order(self, order: Union[OrderRequest, Dict[str, Any]]) -> OrderResponse:
+    def place_order(self, order: OrderRequest | dict[str, Any]) -> OrderResponse:
         """
         Place a single order (sync). Returns OrderResponse.
         """
@@ -121,7 +126,7 @@ class LiveExecutor:
             logger.error(f"Cancel all failed: {e}")
             return False
 
-    def get_positions(self) -> Dict[str, float]:
+    def get_positions(self) -> dict[str, float]:
         """Return dict of ticker → quantity (plus CASH)"""
         if self.dry_run:
             return {"CASH": 100_000.0, "SPY": 100.0, "AAPL": 50.0}
@@ -134,7 +139,7 @@ class LiveExecutor:
             logger.error(f"Failed to get positions: {e}")
             return {}
 
-    def get_account(self) -> Dict[str, Any]:
+    def get_account(self) -> dict[str, Any]:
         if self.dry_run:
             return {
                 "cash": 100_000.0,

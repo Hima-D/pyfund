@@ -13,67 +13,58 @@ Includes:
 - And more...
 """
 
+# === Portfolio Construction (sometimes used as strategy overlay) ===
+from ..portfolio.risk_parity import RiskParityAllocator
 from .base import BaseStrategy, SignalResult
 
-# === Classic Technical Analysis ===
-from .rsi_mean_reversion import RSIMeanReversionStrategy
-from .sma_crossover import SMACrossoverStrategy
+# === Options & Volatility Arbitrage ===
+from .data_hedged_straddle import DeltaHedgedStraddleStrategy
 from .donchian_breakout import DonchianBreakoutStrategy
 
-# === Statistical & Quantitative ===
-from .pair_trading import PairsTradingStrategy
-from .triangulararb import TriangularArbitrageStrategy
-
-# === Machine Learning ===
-from .ml_random_forest import MLRandomForestStrategy
+# === Event-Driven ===
+from .earning_drift import EarningDriftStrategy
 
 # === High-Frequency & Market Making ===
 from .hft_micro_reversion import HFTMicroReversionStrategy
 from .market_making import MarketMakingStrategy
 
-# === Event-Driven ===
-from .earning_drift import EarningDriftStrategy
+# === Machine Learning ===
+from .ml_random_forest import MLRandomForestStrategy
 
-# === Options & Volatility Arbitrage ===
-from .data_hedged_straddle import DeltaHedgedStraddleStrategy
+# === Statistical & Quantitative ===
+from .pair_trading import PairsTradingStrategy
+
+# === Classic Technical Analysis ===
+from .rsi_mean_reversion import RSIMeanReversionStrategy
+from .sma_crossover import SMACrossoverStrategy
+from .triangulararb import TriangularArbitrageStrategy
 
 # === Execution Algorithms ===
 from .vwap_execution import VWAPExecutor
-
-# === Portfolio Construction (sometimes used as strategy overlay) ===
-from ..portfolio.risk_parity import RiskParityAllocator
 
 # Export everything for easy importing
 __all__ = [
     # Core
     "BaseStrategy",
     "SignalResult",
-
     # Technical
     "RSIMeanReversionStrategy",
     "SMACrossoverStrategy",
     "DonchianBreakoutStrategy",
-
     # Stat Arb
     "PairsTradingStrategy",
     "TriangularArbitrageStrategy",
-
     # ML
     "MLRandomForestStrategy",
-
     # HFT
     "HFTMicroReversionStrategy",
     "MarketMakingStrategy",
-
     # Event
     "EarningDriftStrategy",
-
     # Options/Vol
     "DeltaHedgedStraddleStrategy",
-
     # Execution
     "VWAPExecutor",
-
     # Portfolio
     "RiskParityAllocator",
 ]
@@ -94,6 +85,7 @@ STRATEGY_REGISTRY = {
     "risk_parity": RiskParityAllocator,
 }
 
+
 def get_strategy(name: str, **params):
     """Factory function to instantiate strategy by name"""
     cls = STRATEGY_REGISTRY.get(name.lower())
@@ -106,4 +98,5 @@ def get_strategy(name: str, **params):
 __version__ = "1.0.0"
 __author__ = "Himanshu Dixit"
 
-print(f"pyfund.strategies loaded - {len(__all__)} professional strategies ready")from .arima_garch_reversion import ARIMAGARCHStrategy
+print(f"pyfund.strategies loaded - {len(__all__)} professional strategies ready")
+from .arima_garch_reversion import ARIMAGARCHStrategy

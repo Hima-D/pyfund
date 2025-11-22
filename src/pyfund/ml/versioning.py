@@ -1,21 +1,23 @@
 # src/pyfundlib/ml/versioning.py
 from __future__ import annotations
 
-import re
 import json
-from pathlib import Path
+import re
 from datetime import datetime
-from typing import Optional, Literal, Dict, Any
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class VersionBump(Enum):
     PATCH = "patch"
     MINOR = "minor"
     MAJOR = "major"
+
 
 class ModelVersion:
     """
@@ -29,8 +31,8 @@ class ModelVersion:
         major: int = 1,
         minor: int = 0,
         patch: int = 0,
-        prerelease: Optional[str] = None,
-        build: Optional[str] = None,
+        prerelease: str | None = None,
+        build: str | None = None,
     ):
         self.major = major
         self.minor = minor
@@ -39,14 +41,14 @@ class ModelVersion:
         self.build = build
 
     @classmethod
-    def parse(cls, version_str: str) -> "ModelVersion":
+    def parse(cls, version_str: str) -> ModelVersion:
         match = cls.VERSION_PATTERN.match(version_str.strip())
         if not match:
             raise ValueError(f"Invalid version string: {version_str}")
         major, minor, patch = map(int, match.groups()[:3])
         return cls(major, minor, patch)
 
-    def bump(self, level: Union[VersionBump, str]) -> "ModelVersion":
+    def bump(self, level: Union[VersionBump, str]) -> ModelVersion:
         level = VersionBump(level.lower())
         if level == VersionBump.MAJOR:
             return ModelVersion(self.major + 1, 0, 0)
@@ -66,10 +68,10 @@ class ModelVersion:
     def __repr__(self) -> str:
         return f"ModelVersion({str(self)})"
 
-    def __lt__(self, other: "ModelVersion") -> bool:
+    def __lt__(self, other: ModelVersion) -> bool:
         return (self.major, self.minor, self.patch) < (other.major, other.minor, other.patch)
 
-    def __eq__(self, other: "ModelVersion") -> bool:
+    def __eq__(self, other: ModelVersion) -> bool:
         return (self.major, self.minor, self.patch) == (other.major, other.minor, other.patch)
 
 
@@ -87,19 +89,15 @@ class ModelVersionManager:
             self._init_changelog()
 
     def _init_changelog(self):
-        initial = {
-            "project": "pyfundlib",
-            "versions": [],
-            "latest": None
-        }
+        initial = {"project": "pyfundlib", "versions": [], "latest": None}
         self._save_changelog(initial)
 
-    def _load_changelog(self) -> Dict[str, Any]:
+    def _load_changelog(self) -> dict[str, Any]:
         if not self.changelog_path.exists():
             self._init_changelog()
         return json.loads(self.changelog_path.read_text())
 
-    def _save_changelog(self, data: Dict[str, Any]):
+    def _save_changelog(self, data: dict[str, Any]):
         self.changelog_path.write_text(json.dumps(data, indent=2))
 
     def register_version(
@@ -108,9 +106,9 @@ class ModelVersionManager:
         version: Union[str, ModelVersion],
         description: str,
         author: str = "unknown",
-        metrics: Optional[Dict[str, float]] = None,
-        tags: Optional[list[str]] = None,
-        parent_version: Optional[str] = None,
+        metrics: dict[str, float] | None = None,
+        tags: list[str] | None = None,
+        parent_version: str | None = None,
         is_breaking: bool = False,
     ) -> ModelVersion:
         """Register a new model version with full changelog entry"""
@@ -132,7 +130,10 @@ class ModelVersionManager:
         }
 
         # Avoid duplicates
-        if any(e["version"] == str(version) and e["model_name"] == model_name for e in changelog["versions"]):
+        if any(
+            e["version"] == str(version) and e["model_name"] == model_name
+            for e in changelog["versions"]
+        ):
             logger.warning(f"Version {version} for {model_name} already exists")
             return version
 
@@ -143,7 +144,7 @@ class ModelVersionManager:
         logger.info(f"Registered {model_name} {version} | {description}")
         return version
 
-    def get_latest_version(self, model_name: str) -> Optional[Dict[str, Any]]:
+    def get_latest_version(self, model_name: str) -> dict[str, Any] | None:
         changelog = self._load_changelog()
         versions = [v for v in changelog["versions"] if v["model_name"] == model_name]
         if not versions:
@@ -165,7 +166,7 @@ class ModelVersionManager:
             return current.bump(VersionBump.MAJOR)
         return current.bump(bump_level)
 
-    def generate_changelog(self, model_name: Optional[str] = None) -> str:
+    def generate_changelog(self, model_name: str | None = None) -> str:
         changelog = self._load_changelog()
         lines = ["# Model Changelog\n"]
 
@@ -188,7 +189,7 @@ class ModelVersionManager:
 
         return "\n".join(lines)
 
-    def list_versions(self, model_name: Optional[str] = None) -> pd.DataFrame:
+    def list_versions(self, model_name: str | None = None) -> pd.DataFrame:
         changelog = self._load_changelog()
         df = pd.DataFrame(changelog["versions"])
         if model_name:

@@ -1,17 +1,20 @@
 # src/pyfundlib/automation/jobs/rebalance_portfolio.py
 from __future__ import annotations
 
-import pandas as pd
-import numpy as np
 from datetime import datetime
-from typing import Dict, Any
 
+import numpy as np
+import pandas as pd
+
+from pyfund.data.fetcher import DataFetcher
+from pyfund.utils.alerts import send_alert
+
+from ...data.storage import DataStorage
 from ...execution.live import LiveExecutor, OrderRequest
 from ...ml.predictor import MLPredictor
 from ...portfolio.allocator import PortfolioAllocator  # You'll love this one next
-from ...data.storage import DataStorage
-from ...utils.logger import get_logger
 from ...risk.constraints import RiskConstraints
+from ...utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -19,6 +22,7 @@ logger = get_logger(__name__)
 REBALANCE_HOUR = 15  # 3 PM ET — end of day rebalance
 MAX_TRADE_SIZE_PCT = 0.20  # No single trade >20% of portfolio
 MIN_TRADE_THRESHOLD = 0.02  # Only trade if allocation diff >2%
+
 
 def rebalance_job() -> None:
     """
@@ -53,7 +57,9 @@ def rebalance_job() -> None:
             value = qty * price
             current_weights[ticker] = value / portfolio_value
 
-        logger.info(f"Current portfolio value: ${portfolio_value:,.0f} | Positions: {len(current_weights)}")
+        logger.info(
+            f"Current portfolio value: ${portfolio_value:,.0f} | Positions: {len(current_weights)}"
+        )
 
         # 2. Generate latest signals
         signals = {}
@@ -96,13 +102,15 @@ def rebalance_job() -> None:
             side = "buy" if qty > 0 else "sell"
             qty = abs(qty)
 
-            trades.append({
-                "ticker": ticker,
-                "side": side,
-                "qty": qty,
-                "dollar": dollar_amount,
-                "weight_diff": diff,
-            })
+            trades.append(
+                {
+                    "ticker": ticker,
+                    "side": side,
+                    "qty": qty,
+                    "dollar": dollar_amount,
+                    "weight_diff": diff,
+                }
+            )
 
         if not trades:
             logger.info("No rebalance needed — portfolio already optimal")
@@ -119,7 +127,9 @@ def rebalance_job() -> None:
                 time_in_force="day",
             )
             response = executor.place_order(order)
-            logger.info(f"{trade['side'].upper()} {trade['qty']} {trade['ticker']} | ~${trade['dollar']:,.0f}")
+            logger.info(
+                f"{trade['side'].upper()} {trade['qty']} {trade['ticker']} | ~${trade['dollar']:,.0f}"
+            )
 
         # 7. Save rebalance record
         record = {
@@ -132,7 +142,9 @@ def rebalance_job() -> None:
         storage.save(pd.DataFrame([record]), name=f"rebalance/log_{datetime.now().date()}")
 
         elapsed = (datetime.now() - start_time).seconds
-        logger.info(f"Rebalance completed successfully in {elapsed}s | {len(trades)} trades executed")
+        logger.info(
+            f"Rebalance completed successfully in {elapsed}s | {len(trades)} trades executed"
+        )
 
         # Alert
         send_rebalance_alert(len(trades), portfolio_value)
@@ -143,10 +155,12 @@ def rebalance_job() -> None:
 
 
 def send_rebalance_alert(num_trades: int, value: float):
-    message = f"Portfolio Rebalanced\n" \
-              f"{num_trades} trades executed\n" \
-              f"Value: ${value:,.0f}\n" \
-              f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    message = (
+        f"Portfolio Rebalanced\n"
+        f"{num_trades} trades executed\n"
+        f"Value: ${value:,.0f}\n"
+        f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    )
     # Send via Telegram/email/Slack
     logger.info(f"Alert: {message}")
 

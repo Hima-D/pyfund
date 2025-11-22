@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pandas as pd
-from typing import Union
 
 
 def rsi(
@@ -50,8 +49,8 @@ def rsi(
 
     if method == "wilder":
         # Wilder's smoothing (most accurate & widely used)
-        roll_up = up.ewm(alpha=1/window, adjust=False, min_periods=window).mean()
-        roll_down = down.ewm(alpha=1/window, adjust=False, min_periods=window).mean()
+        roll_up = up.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+        roll_down = down.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
     else:
         # Simple moving average (legacy)
         roll_up = up.rolling(window=window, min_periods=window).mean()
@@ -73,6 +72,7 @@ def rsi(
 # Optional: Class version for strategy objects / optimization
 class RSI:
     """Callable RSI class for hyperparameter tuning or stateful use."""
+
     def __init__(self, window: int = 14, method: str = "wilder"):
         self.window = window
         self.method = method

@@ -1,19 +1,20 @@
 # src/pyfundlib/ml/predictor.py
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
 import mlflow
 import mlflow.pyfunc
-from pathlib import Path
-from typing import Optional, Dict, Any, Union
-import pandas as pd
 import numpy as np
-from datetime import datetime
+import pandas as pd
 
+from ..data.storage import DataStorage
+from ..utils.logger import get_logger
 from .models.base_model import BaseMLModel
 from .pipelines.feature_pipeline import FeaturePipeline
 from .pipelines.training_pipeline import TrainingPipeline
-from ..utils.logger import get_logger
-from ..data.storage import DataStorage
 
 logger = get_logger(__name__)
 
@@ -50,7 +51,9 @@ class MLPredictor:
         self.registry = mlflow.tracking.MlflowClient()
         self.storage = DataStorage()
 
-        logger.info(f"MLPredictor initialized | Tracking: {mlflow_tracking_uri} | Models: {self.model_dir}")
+        logger.info(
+            f"MLPredictor initialized | Tracking: {mlflow_tracking_uri} | Models: {self.model_dir}"
+        )
 
     def train(
         self,
@@ -59,7 +62,7 @@ class MLPredictor:
         target: pd.Series,
         model_class: type[BaseMLModel],
         feature_pipeline: FeaturePipeline,
-        pipeline_config: Optional[Dict[str, Any]] = None,
+        pipeline_config: dict[str, Any] | None = None,
     ) -> BaseMLModel:
         """Train a model for a specific ticker with full MLflow logging"""
         logger.info(f"Starting training for {ticker} using {model_class.__name__}")
@@ -96,19 +99,19 @@ class MLPredictor:
 
             # Tag as latest
             self.registry.transition_model_version_stage(
-                name=registered_model.name,
-                version=registered_model.version,
-                stage="Staging"
+                name=registered_model.name, version=registered_model.version, stage="Staging"
             )
 
-            logger.info(f"Model trained & registered for {ticker} | Version: {registered_model.version}")
+            logger.info(
+                f"Model trained & registered for {ticker} | Version: {registered_model.version}"
+            )
             return best_model
 
     def predict(
         self,
         ticker: str,
         raw_data: pd.DataFrame,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         stage: str = "Production",
     ) -> np.ndarray:
         """Get latest prediction for a ticker"""
@@ -132,7 +135,7 @@ class MLPredictor:
         ticker: str,
         model_name: str = "xgboost",
         stage: str = "Production",
-    ) -> Optional[BaseMLModel]:
+    ) -> BaseMLModel | None:
         """Load the latest production/staging model for a ticker"""
         try:
             client = mlflow.tracking.MlflowClient()
@@ -147,7 +150,9 @@ class MLPredictor:
             loaded_model = mlflow.pyfunc.load_model(model_uri)
 
             if isinstance(loaded_model, BaseMLModel):
-                logger.info(f"Loaded {stage} model: {latest_version.name} v{latest_version.version}")
+                logger.info(
+                    f"Loaded {stage} model: {latest_version.name} v{latest_version.version}"
+                )
                 return loaded_model
             else:
                 # Fallback: load from disk if not pyfunc
@@ -170,20 +175,22 @@ class MLPredictor:
         )
         logger.info(f"Promoted {ticker}_{model_name} v{version} → Production")
 
-    def list_models(self, ticker: Optional[str] = None) -> pd.DataFrame:
+    def list_models(self, ticker: str | None = None) -> pd.DataFrame:
         """List all registered models"""
         client = mlflow.tracking.MlflowClient()
         models = client.search_registered_models()
         rows = []
         for model in models:
             for version in model.latest_versions:
-                rows.append({
-                    "name": model.name,
-                    "version": version.version,
-                    "stage": version.current_stage,
-                    "run_id": version.run_id,
-                    "ticker": model.name.split("_")[0] if "_" in model.name else "unknown",
-                })
+                rows.append(
+                    {
+                        "name": model.name,
+                        "version": version.version,
+                        "stage": version.current_stage,
+                        "run_id": version.run_id,
+                        "ticker": model.name.split("_")[0] if "_" in model.name else "unknown",
+                    }
+                )
         df = pd.DataFrame(rows)
         if ticker:
             df = df[df["ticker"] == ticker]

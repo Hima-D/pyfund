@@ -1,18 +1,17 @@
 # src/pyfundlib/automation/runner.py
 from __future__ import annotations
 
-import signal
 import sys
-import logging
-from typing import Optional
+from datetime import datetime
 
-from .scheduler import scheduler
-from .jobs.retrain_ml import retrain_job
+from ..utils.logger import get_logger
 from .jobs.generate_signals import generate_signals_job
 from .jobs.rebalance_portfolio import rebalance_job
-from ..utils.logger import get_logger
+from .jobs.retrain_ml import retrain_job
+from .scheduler import scheduler
 
 logger = get_logger(__name__)
+
 
 class AutomationRunner:
     """
@@ -41,7 +40,7 @@ class AutomationRunner:
                 minute=0,
                 day_of_week="sun",
                 id="retrain_ml_weekly",
-                name="Weekly ML Retraining"
+                name="Weekly ML Retraining",
             )
 
             # Signal generation — every 15 mins during US market hours
@@ -53,7 +52,7 @@ class AutomationRunner:
                 day_of_week="mon-fri",
                 timezone="US/Eastern",
                 id="generate_signals_intraday",
-                name="Intraday Signal Generation"
+                name="Intraday Signal Generation",
             )
 
             # Portfolio rebalance — 3:55 PM ET (right before close)
@@ -65,7 +64,7 @@ class AutomationRunner:
                 day_of_week="mon-fri",
                 timezone="US/Eastern",
                 id="rebalance_daily",
-                name="Daily Portfolio Rebalance"
+                name="Daily Portfolio Rebalance",
             )
 
             logger.info("All jobs scheduled successfully")
@@ -86,11 +85,17 @@ runner = AutomationRunner(mode="paper")  # default safe
 def main():
     """Entry point for CLI: pyfundlib automate"""
     import argparse
+
     parser = argparse.ArgumentParser(description="Start pyfundlib autonomous trading")
-    parser.add_argument("--mode", choices=["paper", "live"], default="paper",
-                        help="paper = dry-run, live = real money (be careful!)")
-    parser.add_argument("--confirm-live", action="store_true",
-                        help="Required flag to start in live mode")
+    parser.add_argument(
+        "--mode",
+        choices=["paper", "live"],
+        default="paper",
+        help="paper = dry-run, live = real money (be careful!)",
+    )
+    parser.add_argument(
+        "--confirm-live", action="store_true", help="Required flag to start in live mode"
+    )
 
     args = parser.parse_args()
 

@@ -2,17 +2,17 @@
 from __future__ import annotations
 
 import pandas as pd
-from typing import Dict
+
 
 class RiskConstraints:
     """Enforce portfolio-level risk limits"""
 
     def __init__(
         self,
-        max_position: float = 0.20,        # 20% max per ticker
-        max_sector: float = 0.40,          # 40% max per sector
-        max_drawdown: float = 0.20,        # Hard stop at -20%
-        max_volatility: float = 0.25,      # 25% annual vol target
+        max_position: float = 0.20,  # 20% max per ticker
+        max_sector: float = 0.40,  # 40% max per sector
+        max_drawdown: float = 0.20,  # Hard stop at -20%
+        max_volatility: float = 0.25,  # 25% annual vol target
         leverage_limit: float = 3.0,
     ):
         self.max_position = max_position
@@ -21,7 +21,7 @@ class RiskConstraints:
         self.max_volatility = max_volatility
         self.leverage_limit = leverage_limit
 
-    def check_compliance(self, weights: pd.Series, sector_map: Dict[str, str]) -> Dict[str, Any]:
+    def check_compliance(self, weights: pd.Series, sector_map: dict[str, str]) -> dict[str, Any]:
         violations = []
 
         # Position concentration

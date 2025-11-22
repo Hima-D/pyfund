@@ -1,11 +1,11 @@
 # src/pyfund/data/processor.py
 from __future__ import annotations
 
+from typing import Literal
+
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
-from typing import Literal, Optional, Dict, Any, Union
-import numpy as np
-
 
 OhlcvAgg = Literal["open", "high", "low", "close", "volume"]
 Rule = str  # e.g., "1W", "1d", "30min", "1M", etc.
@@ -24,7 +24,7 @@ class DataProcessor:
         *,
         closed: Literal["left", "right"] = "left",
         label: Literal["left", "right"] = "left",
-        custom_agg: Optional[Dict[str, str]] = None,
+        custom_agg: dict[str, str] | None = None,
         min_periods: int = 1,
     ) -> DataFrame:
         """
@@ -53,11 +53,11 @@ class DataProcessor:
             raise ValueError("DataFrame must have a DatetimeIndex")
 
         default_agg = {
-            'Open': 'first',
-            'High': 'max',
-            'Low': 'min',
-            'Close': 'last',
-            'Volume': 'sum',
+            "Open": "first",
+            "High": "max",
+            "Low": "min",
+            "Close": "last",
+            "Volume": "sum",
         }
 
         if custom_agg:
@@ -73,9 +73,9 @@ class DataProcessor:
         df: DataFrame,
         *,
         method: Literal["ffill", "bfill", "both", "interpolate", "drop"] = "both",
-        limit: Optional[int] = None,
-        freq: Optional[str] = None,
-        max_gap_fill: Optional[int] = 5,
+        limit: int | None = None,
+        freq: str | None = None,
+        max_gap_fill: int | None = 5,
     ) -> DataFrame:
         """
         Clean missing data with multiple strategies.
@@ -105,11 +105,7 @@ class DataProcessor:
 
         if freq:
             # Reindex to perfect calendar (business days, etc.)
-            date_range = pd.date_range(
-                start=df.index.min(),
-                end=df.index.max(),
-                freq=freq
-            )
+            date_range = pd.date_range(start=df.index.min(), end=df.index.max(), freq=freq)
             df = df.reindex(date_range)
 
         if method == "drop":
@@ -143,7 +139,7 @@ class DataProcessor:
         return df
 
     @staticmethod
-    def align_multiple(dfs: Dict[str, DataFrame], fill_method: str = "ffill") -> DataFrame:
+    def align_multiple(dfs: dict[str, DataFrame], fill_method: str = "ffill") -> DataFrame:
         """
         Align multiple ticker DataFrames on the same index (e.g., for multi-asset backtesting).
 
@@ -160,14 +156,18 @@ class DataProcessor:
             MultiIndex columns: (ticker, field)
         """
         aligned = pd.concat(
-            {ticker: DataProcessor.clean_and_fill(df, method=fill_method)
-             for ticker, df in dfs.items()},
-            axis=1
+            {
+                ticker: DataProcessor.clean_and_fill(df, method=fill_method)
+                for ticker, df in dfs.items()
+            },
+            axis=1,
         )
         return aligned.sort_index()
 
     @staticmethod
-    def add_log_returns(df: DataFrame, price_col: str = "Close", name: str = "log_return") -> DataFrame:
+    def add_log_returns(
+        df: DataFrame, price_col: str = "Close", name: str = "log_return"
+    ) -> DataFrame:
         """Add log returns column."""
         df = df.copy()
         df[name] = np.log(df[price_col] / df[price_col].shift(1))

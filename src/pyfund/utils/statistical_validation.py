@@ -1,7 +1,10 @@
+import warnings
+
 import numpy as np
 from scipy import stats
-import warnings
+
 warnings.filterwarnings("ignore")
+
 
 def validate_strategy(returns: np.ndarray) -> dict:
     returns = np.array(returns).flatten()
@@ -19,11 +22,11 @@ def validate_strategy(returns: np.ndarray) -> dict:
     sr = sharpe
     skew = stats.skew(returns)
     kurt = stats.kurtosis(returns) + 3
-    denominator = np.sqrt(1 + (skew * sr)/6 + ((kurt - 3) * sr**2)/24)
+    denominator = np.sqrt(1 + (skew * sr) / 6 + ((kurt - 3) * sr**2) / 24)
     psr = stats.norm.cdf(sr / denominator) if denominator > 0 else 0
 
     trials = 100
-    dsr = sharpe * (1 - stats.norm.ppf(0.95) * np.sqrt((1 - 0.5)/trials))
+    dsr = sharpe * (1 - stats.norm.ppf(0.95) * np.sqrt((1 - 0.5) / trials))
 
     result = {
         "cagr_%": round(cagr * 100, 2),
@@ -33,9 +36,12 @@ def validate_strategy(returns: np.ndarray) -> dict:
         "probability_of_skill_%": round(psr * 100, 3),
         "deflated_sharpe": round(dsr, 3),
         "observations": len(returns),
-        "verdict": "REAL ALPHA — SCIENTIFICALLY PROVEN" if (significant and psr > 0.95) else "LIKELY LUCK"
+        "verdict": (
+            "REAL ALPHA — SCIENTIFICALLY PROVEN" if (significant and psr > 0.95) else "LIKELY LUCK"
+        ),
     }
     return result
+
 
 def print_validation(returns):
     r = validate_strategy(returns)
@@ -44,4 +50,4 @@ def print_validation(returns):
         if k != "verdict":
             print(f"{k:25}: {v}")
     print(f"\nVERDICT → {r['verdict']}")
-    print("="*60)
+    print("=" * 60)

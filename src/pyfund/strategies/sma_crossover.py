@@ -1,17 +1,19 @@
 # src/pyfund/strategies/sma_crossover.py
+
 import pandas as pd
-from typing import Optional
-from .base import BaseStrategy
+
 from ..indicators.sma import sma
+from .base import BaseStrategy
+
 
 class SMACrossoverStrategy(BaseStrategy):
     """
     Simple Moving Average Crossover Strategy
-    
+
     Golden Cross: Short SMA crosses above Long SMA → Buy (1)
     Death Cross: Short SMA crosses below Long SMA → Sell (-1)
     Flat otherwise (0)
-    
+
     Classic trend-following strategy used by CTAs, retail, and institutions.
     """
 
@@ -22,7 +24,7 @@ class SMACrossoverStrategy(BaseStrategy):
         "trailing_stop_pct": 0.10,  # 10%
     }
 
-    def __init__(self, params: Optional[dict] = None):
+    def __init__(self, params: dict | None = None):
         super().__init__({**self.default_params, **(params or {})})
         self.short_window = self.params["short_window"]
         self.long_window = self.params["long_window"]
@@ -30,14 +32,14 @@ class SMACrossoverStrategy(BaseStrategy):
     def generate_signals(self, data: pd.DataFrame) -> pd.Series:
         """
         Generate trading signals based on SMA crossover
-        
+
         Returns:
             pd.Series with values:
                 1  → Long (golden cross)
                 -1 → Short (death cross)
                 0  → Flat
         """
-        close = data['Close']
+        close = data["Close"]
 
         short_sma = sma(close, self.short_window)
         long_sma = sma(close, self.long_window)
@@ -75,4 +77,6 @@ if __name__ == "__main__":
 
     print("Last 10 signals:")
     print(signals.tail(10))
-    print(f"\nCurrent position: {'LONG' if signals.iloc[-1] == 1 else 'SHORT' if signals.iloc[-1] == -1 else 'FLAT'}")
+    print(
+        f"\nCurrent position: {'LONG' if signals.iloc[-1] == 1 else 'SHORT' if signals.iloc[-1] == -1 else 'FLAT'}"
+    )

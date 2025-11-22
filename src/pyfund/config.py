@@ -1,5 +1,7 @@
 from pathlib import Path
+
 from pydantic import BaseSettings, Field
+
 
 class Settings(BaseSettings):
     data_dir: Path = Field(default=Path("./data"), env="PYFUND_DATA_DIR")
@@ -12,5 +14,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
 
 settings = Settings()

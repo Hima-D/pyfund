@@ -1,14 +1,12 @@
 # src/pyfund/reporting/perf_report.py
 from __future__ import annotations
 
-import pandas as pd
-import numpy as np
-from typing import Optional, Dict, Any
 from pathlib import Path
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-from ..utils.plotter import Plotter  # You'll love the bonus Plotter at the end
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 
 
 class PerformanceReport:
@@ -19,8 +17,8 @@ class PerformanceReport:
     def __init__(
         self,
         equity_curve: pd.Series,
-        trades: Optional[pd.DataFrame] = None,
-        benchmark: Optional[pd.Series] = None,
+        trades: pd.DataFrame | None = None,
+        benchmark: pd.Series | None = None,
         risk_free_rate: float = 0.04,  # 4% annual
         title: str = "Strategy Performance Report",
     ):
@@ -47,7 +45,7 @@ class PerformanceReport:
         plt.style.use("seaborn-v0_8-darkgrid")
         sns.set_palette("husl")
 
-    def generate_report(self, output_path: Optional[Path] = None) -> None:
+    def generate_report(self, output_path: Path | None = None) -> None:
         """Generate full multi-page report."""
         fig = plt.figure(figsize=(20, 24))
         gs = fig.add_gridspec(4, 2, hspace=0.3, wspace=0.3)
@@ -80,7 +78,7 @@ class PerformanceReport:
             print(f"Report saved to {output_path}")
         plt.show()
 
-    def summary(self) -> Dict[str, float]:
+    def summary(self) -> dict[str, float]:
         """Return dictionary of all key performance metrics."""
         return {
             "Total Return": self._total_return(),
@@ -133,8 +131,18 @@ class PerformanceReport:
 
     def _plot_returns_distribution(self, ax):
         self.returns.hist(bins=60, ax=ax, alpha=0.7, color="steelblue", edgecolor="black")
-        ax.axvline(self.returns.mean(), color="green", linestyle="--", label=f"Mean: {self.returns.mean():.2%}")
-        ax.axvline(self.returns.median(), color="orange", linestyle="--", label=f"Median: {self.returns.median():.2%}")
+        ax.axvline(
+            self.returns.mean(),
+            color="green",
+            linestyle="--",
+            label=f"Mean: {self.returns.mean():.2%}",
+        )
+        ax.axvline(
+            self.returns.median(),
+            color="orange",
+            linestyle="--",
+            label=f"Median: {self.returns.median():.2%}",
+        )
         ax.set_title("Daily Returns Distribution", fontsize=16, fontweight="bold")
         ax.set_xlabel("Daily Return")
         ax.legend()

@@ -1,40 +1,42 @@
 # src/pyfund/strategies/earning_drift.py
-import pandas as pd
-import numpy as np
-from typing import Dict, Optional, List
 from datetime import timedelta
-from .base import BaseStrategy
+
+import numpy as np
+import pandas as pd
+
 from ..data.fetcher import DataFetcher
 from ..utils.logger import logger
+from .base import BaseStrategy
+
 
 class EarningDriftStrategy(BaseStrategy):
     """
     Post-Earnings Announcement Drift (PEAD) + Earnings Surprise Strategy
-    
+
     One of the strongest and most persistent market anomalies:
     - Stocks with positive earnings surprises outperform
     - Negative surprises underperform
     - Effect lasts 30-90 days (sometimes longer)
     - Amplified by estimate revisions and analyst sentiment
-    
+
     Ball & Brown (1968), Foster et al., Bernard & Thomas — still works in 2025!
     """
 
     default_params = {
-        "surprise_threshold": 0.10,      # |EPS surprise| > 10% to trigger
-        "lookback_days": 90,             # Hold period (classic PEAD window)
-        "min_market_cap": 500_000_000,   # Avoid micro-caps
-        "volume_filter": 1.0,            # Avg volume > $1M/day
-        "revision_momentum": True,       # Require upward/downward estimate revisions
-        "z_score_threshold": 1.5,        # Earnings surprise z-score
-        "max_positions": 20,             # Portfolio concentration
+        "surprise_threshold": 0.10,  # |EPS surprise| > 10% to trigger
+        "lookback_days": 90,  # Hold period (classic PEAD window)
+        "min_market_cap": 500_000_000,  # Avoid micro-caps
+        "volume_filter": 1.0,  # Avg volume > $1M/day
+        "revision_momentum": True,  # Require upward/downward estimate revisions
+        "z_score_threshold": 1.5,  # Earnings surprise z-score
+        "max_positions": 20,  # Portfolio concentration
     }
 
-    def __init__(self, params: Optional[Dict] = None):
+    def __init__(self, params: dict | None = None):
         super().__init__({**self.default_params, **(params or {})})
-        self.active_positions: Dict[str, Dict] = {}  # ticker -> entry info
+        self.active_positions: dict[str, dict] = {}  # ticker -> entry info
 
-    def _get_earnings_surprise(self, ticker: str) -> Optional[Dict]:
+    def _get_earnings_surprise(self, ticker: str) -> dict | None:
         """Fetch latest earnings surprise (simulated — in real use: Alpha Vantage, Polygon, etc.)"""
         try:
             # In real implementation, use proper financial data API
@@ -45,7 +47,9 @@ class EarningDriftStrategy(BaseStrategy):
 
             # Simulate quarterly earnings dates (every ~90 days)
             last_date = df.index[-1]
-            earnings_dates = pd.date_range(last_date - timedelta(days=365), last_date, freq='90D')[-4:]
+            earnings_dates = pd.date_range(last_date - timedelta(days=365), last_date, freq="90D")[
+                -4:
+            ]
 
             # Simulate EPS actual vs expected
             surprises = []
@@ -53,11 +57,13 @@ class EarningDriftStrategy(BaseStrategy):
                 if ed > last_date:
                     break
                 surprise_pct = np.random.normal(0.02, 0.15)  # Mean +2%, std 15%
-                surprises.append({
-                    "date": ed,
-                    "surprise_pct": surprise_pct,
-                    "z_score": surprise_pct / 0.10,  # Normalize
-                })
+                surprises.append(
+                    {
+                        "date": ed,
+                        "surprise_pct": surprise_pct,
+                        "z_score": surprise_pct / 0.10,  # Normalize
+                    }
+                )
 
             latest = surprises[-1]
             if abs(latest["surprise_pct"]) > self.params["surprise_threshold"]:
@@ -97,10 +103,12 @@ class EarningDriftStrategy(BaseStrategy):
                     self.active_positions[ticker] = {
                         "entry_date": data.index[-1],
                         "direction": position_size,
-                        "surprise": surprise["surprise_pct"]
+                        "surprise": surprise["surprise_pct"],
                     }
                     active_tickers.append(ticker)
-                    logger.info(f"PEAD Signal: {ticker} | Surprise: {surprise['surprise_pct']:+.1%} | Direction: {'LONG' if position_size > 0 else 'SHORT'}")
+                    logger.info(
+                        f"PEAD Signal: {ticker} | Surprise: {surprise['surprise_pct']:+.1%} | Direction: {'LONG' if position_size > 0 else 'SHORT'}"
+                    )
 
             # Hold up to lookback_days
             elif ticker in self.active_positions:
@@ -126,15 +134,12 @@ class EarningDriftStrategy(BaseStrategy):
 
 # Live test
 if __name__ == "__main__":
-    strategy = EarningDriftStrategy({
-        "surprise_threshold": 0.08,
-        "lookback_days": 60
-    })
+    strategy = EarningDriftStrategy({"surprise_threshold": 0.08, "lookback_days": 60})
 
     # Simulate daily scan
     data = pd.DataFrame(index=pd.date_range("2025-01-01", periods=200))
     signals = strategy.generate_signals(data)
-    
+
     print(f"Active PEAD positions: {len(strategy.active_positions)}")
     for t, info in strategy.active_positions.items():
         print(f"  {t}: {info['direction']:+} | Surprise: {info['surprise']:+.1%}")

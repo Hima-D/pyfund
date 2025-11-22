@@ -3,19 +3,18 @@ from __future__ import annotations
 
 import signal
 import sys
-import logging
-from typing import Callable, Optional, Dict, Any
-from datetime import datetime
+from collections.abc import Callable
 
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
+from apscheduler.executors.pool import ProcessPoolExecutor, ThreadPoolExecutor
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
-from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED, EVENT_JOB_EXECUTED
 
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 class Scheduler:
     """
@@ -63,8 +62,8 @@ class Scheduler:
         self,
         func: Callable,
         trigger: str = "cron",
-        id: Optional[str] = None,
-        name: Optional[str] = None,
+        id: str | None = None,
+        name: str | None = None,
         **trigger_args,
     ) -> None:
         """Add a job with smart defaults"""
@@ -134,6 +133,7 @@ class Scheduler:
 
     def _setup_signal_handlers(self):
         """Handle SIGTERM/SIGINT gracefully (Docker/K8s friendly)"""
+
         def signal_handler(signum, frame):
             logger.info(f"Received signal {signum} — shutting down...")
             self.shutdown()

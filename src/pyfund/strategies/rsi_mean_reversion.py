@@ -1,15 +1,17 @@
 # src/pyfund/strategies/rsi_mean_reversion.py
-import pandas as pd
+from typing import Any
+
 import numpy as np
-from typing import Optional, Dict, Any
-from .base import BaseStrategy
+import pandas as pd
+
 from ..indicators.rsi import rsi
+from .base import BaseStrategy
 
 
 class RSIMeanReversionStrategy(BaseStrategy):
     """
     Enhanced RSI Mean Reversion Strategy
-    
+
     Features:
     - Dynamic overbought/oversold thresholds
     - Optional volatility filter (avoid trading in high volatility regimes)
@@ -22,25 +24,25 @@ class RSIMeanReversionStrategy(BaseStrategy):
         "rsi_window": 14,
         "oversold": 30,
         "overbought": 70,
-        "exit_rsi": 50,                  # Exit when RSI crosses back to neutral
-        "vol_window": 20,                # Volatility filter window
-        "vol_threshold": 1.5,            # Only trade if vol < 1.5x average
+        "exit_rsi": 50,  # Exit when RSI crosses back to neutral
+        "vol_window": 20,  # Volatility filter window
+        "vol_threshold": 1.5,  # Only trade if vol < 1.5x average
         "use_vol_filter": True,
         "use_trailing_stop": True,
-        "trailing_stop_pct": 0.08,       # 8% trailing stop
-        "max_holding_days": 21,          # Max 3 weeks in position
+        "trailing_stop_pct": 0.08,  # 8% trailing stop
+        "max_holding_days": 21,  # Max 3 weeks in position
     }
 
-    def __init__(self, params: Optional[Dict[str, Any]] = None):
+    def __init__(self, params: dict[str, Any] | None = None):
         super().__init__({**self.default_params, **(params or {})})
-        self.current_position: Optional[int] = None
-        self.entry_price: Optional[float] = None
-        self.entry_date: Optional[pd.Timestamp] = None
+        self.current_position: int | None = None
+        self.entry_price: float | None = None
+        self.entry_date: pd.Timestamp | None = None
 
     def generate_signals(self, data: pd.DataFrame) -> pd.Series:
         """
         Generate high-quality RSI mean reversion signals
-        
+
         Signal logic:
           - Buy when RSI < oversold AND (optional) volatility is normal
           - Sell when RSI > overbought
@@ -51,9 +53,9 @@ class RSIMeanReversionStrategy(BaseStrategy):
         if len(data) < self.params["rsi_window"] + 20:
             return pd.Series(0, index=data.index)
 
-        close = data['Close']
-        high = data['High']
-        low = data['Low']
+        close = data["Close"]
+        high = data["High"]
+        low = data["Low"]
 
         rsi_series = rsi(close, self.params["rsi_window"])
         signals = pd.Series(0, index=data.index)
@@ -133,9 +135,11 @@ class RSIMeanReversionStrategy(BaseStrategy):
 
     def __repr__(self) -> str:
         p = self.params
-        return (f"RSIMeanReversionStrategy("
-                f"window={p['rsi_window']}, "
-                f"oversold={p['oversold']}, overbought={p['overbought']})")
+        return (
+            f"RSIMeanReversionStrategy("
+            f"window={p['rsi_window']}, "
+            f"oversold={p['oversold']}, overbought={p['overbought']})"
+        )
 
 
 # Quick test
@@ -143,13 +147,11 @@ if __name__ == "__main__":
     from ..data.fetcher import DataFetcher
 
     df = DataFetcher.get_price("AAPL", period="3y")
-    strategy = RSIMeanReversionStrategy({
-        "oversold": 25,
-        "overbought": 75,
-        "use_vol_filter": True
-    })
+    strategy = RSIMeanReversionStrategy({"oversold": 25, "overbought": 75, "use_vol_filter": True})
     signals = strategy.generate_signals(df)
-    
+
     print(f"Total signals generated: {len(signals[signals != 0])}")
-    print(f"Current signal: {'LONG' if signals.iloc[-1] == 1 else 'SHORT' if signals.iloc[-1] == -1 else 'FLAT'}")
+    print(
+        f"Current signal: {'LONG' if signals.iloc[-1] == 1 else 'SHORT' if signals.iloc[-1] == -1 else 'FLAT'}"
+    )
     print(signals.tail(10))

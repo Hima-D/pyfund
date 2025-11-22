@@ -1,7 +1,9 @@
 # src/pyfund/strategies/triangulararb.py
+
 import pandas as pd
-from typing import Dict, Tuple, Optional
+
 from ..data.fetcher import DataFetcher
+
 
 class TriangularArbitrageStrategy:
     """
@@ -28,12 +30,12 @@ class TriangularArbitrageStrategy:
 
         # Define the three trading pairs in the triangle
         self.pairs = [
-            f"{self.base}{self.quote}",   # e.g., BTCUSDT
+            f"{self.base}{self.quote}",  # e.g., BTCUSDT
             f"{self.intermediate}{self.base}",  # e.g., ETHBTC
             f"{self.intermediate}{self.quote}",  # e.g., ETHUSDT
         ]
 
-    def _fetch_prices(self) -> Dict[str, Dict[str, float]]:
+    def _fetch_prices(self) -> dict[str, dict[str, float]]:
         """Fetch latest bid/ask prices for all three pairs"""
         prices = {}
         for pair in self.pairs:
@@ -49,7 +51,7 @@ class TriangularArbitrageStrategy:
                 return {}
         return prices
 
-    def _forward_arbitrage(self, prices: Dict) -> Tuple[float, str]:
+    def _forward_arbitrage(self, prices: dict) -> tuple[float, str]:
         """Start with quote currency → try to end with more quote"""
         try:
             # Step 1: Buy intermediate with base (e.g., buy ETH with BTC)
@@ -68,7 +70,7 @@ class TriangularArbitrageStrategy:
         except:
             return 0.0, "forward"
 
-    def _reverse_arbitrage(self, prices: Dict) -> Tuple[float, str]:
+    def _reverse_arbitrage(self, prices: dict) -> tuple[float, str]:
         """Start with quote → opposite direction"""
         try:
             # Reverse path
@@ -81,7 +83,7 @@ class TriangularArbitrageStrategy:
         except:
             return 0.0, "reverse"
 
-    def scan(self) -> Optional[dict]:
+    def scan(self) -> dict | None:
         """
         Scan for triangular arbitrage opportunity.
         Returns dict with signal details if profitable, else None.

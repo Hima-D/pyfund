@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pandas as pd
-from typing import Tuple, Optional
 
 
 def macd(
@@ -12,7 +11,7 @@ def macd(
     slow: int = 26,
     signal: int = 9,
     adjust: bool = True,
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
     Calculate the Moving Average Convergence Divergence (MACD) indicator.
 
@@ -72,13 +71,14 @@ class MACD:
     """
     Class-based MACD indicator (useful for strategy objects or stateful use).
     """
+
     def __init__(self, fast: int = 12, slow: int = 26, signal: int = 9, adjust: bool = True):
         self.fast = fast
         self.slow = slow
         self.signal = signal
         self.adjust = adjust
 
-    def __call__(self, close: pd.Series) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def __call__(self, close: pd.Series) -> tuple[pd.Series, pd.Series, pd.Series]:
         return macd(close, fast=self.fast, slow=self.slow, signal=self.signal, adjust=self.adjust)
 
     def __repr__(self) -> str:
