@@ -112,10 +112,10 @@ class PortfolioAllocator(BaseAllocator):
             )
 
             weights = result.x if result.success else np.ones(len(active)) / len(active)
-        except:
+        except Exception as e:
             weights = np.ones(len(active)) / len(active)
 
-        return dict(zip(active, weights))
+        return dict(zip(strict=True, active, weights))
 
     def _inverse_volatility(self, returns: pd.DataFrame, active: list[str]) -> dict[str, float]:
         """Weight inversely proportional to volatility"""

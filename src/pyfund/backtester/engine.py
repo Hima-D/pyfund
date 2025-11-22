@@ -117,7 +117,7 @@ class Backtester:
         entry_price = entry_date = None
         direction = 0
 
-        for date, (pos, ret) in enumerate(zip(position, returns)):
+        for date, (pos, _ret) in enumerate(zip(strict=True, position, returns)):
             if pos != direction and pos != 0:
                 # Entry
                 if entry_price is not None:

@@ -119,12 +119,12 @@ class RiskParityAllocator:
             weights = weights * (self.max_leverage / total_leverage)
 
         # Final weights
-        self.weights = {ticker: float(w) for ticker, w in zip(self.tickers, weights)}
+        self.weights = {ticker: float(w) for ticker, w in zip(strict=True, self.tickers, weights)}
 
         # Risk contributions
         rc = self._risk_contribution(weights, cov_matrix)
         rc_pct = rc / rc.sum()
-        self.risk_contributions = {ticker: float(r) for ticker, r in zip(self.tickers, rc_pct)}
+        self.risk_contributions = {ticker: float(r) for ticker, r in zip(strict=True, self.tickers, rc_pct)}
 
         return self.weights
 

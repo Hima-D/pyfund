@@ -46,7 +46,7 @@ def rebalance_job() -> None:
         # 1. Get current account state
         account = executor.get_account()
         positions = executor.get_positions()  # {ticker: qty}
-        cash = account["cash"]
+        # cash = account["cash"]  # unused
         portfolio_value = account["portfolio_value"]
 
         current_weights = {}
@@ -126,7 +126,7 @@ def rebalance_job() -> None:
                 type="market",
                 time_in_force="day",
             )
-            response = executor.place_order(order)
+            # response = executor.place_order(order)  # unused
             logger.info(
                 f"{trade['side'].upper()} {trade['qty']} {trade['ticker']} | ~${trade['dollar']:,.0f}"
             )

@@ -74,7 +74,7 @@ class EarningDriftStrategy(BaseStrategy):
                     "z_score": latest["z_score"],
                     "direction": 1 if latest["surprise_pct"] > 0 else -1,
                 }
-        except:
+        except Exception as e:
             pass
         return None
 
