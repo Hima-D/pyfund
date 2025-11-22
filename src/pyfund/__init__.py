@@ -19,3 +19,4 @@ __all__ = [
     "Backtester", "MLPredictor", "PortfolioAllocator",
     "LiveExecutor", "AutomationRunner",
 ]from .econometrics.core import describe_financial, deflated_sharpe_ratio, probabilistic_sharpe_ratio
+from .backtester.auto_report import run as auto_report
