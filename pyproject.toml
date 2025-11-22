@@ -72,28 +72,16 @@ target-version = ["py310"]
 python_version = "3.10"
 strict = true
 [tool.ruff]
-# This section must exist, but only format settings go here now
+# Minimal root section (required for ruff format)
 
 [tool.ruff.format]
-indent-style = "space"
 quote-style = "double"
+indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint]
-select = [
-    "E", "W",   # pycodestyle
-    "F",        # Pyflakes
-    "I",        # isort
-    "B",        # bugbear
-    "UP",       # pyupgrade
-    "C4",       # comprehensions
-    "PIE",      # misc
-    "RUF",      # ruff-specific
-    "PYI",      # flake8-pyi
-]
-ignore = ["E501"]                    # Let Black handle line length
+select = ["E", "W", "F", "I", "B", "UP", "C4", "PIE", "RUF"]
+ignore = ["E501"]           # Let Black own line length
 target-version = "py310"
-fixable = ["ALL"]
-unfixable = []
 
