@@ -4,3 +4,7 @@ sphinx-autodoc-typehints
 sphinx-copybutton
 sphinxext-opengraph
 myst-parser
+statsmodels>=0.14
+arch>=6.0
+pmdarima
+linearmodels
