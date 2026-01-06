@@ -10,6 +10,8 @@ sys.path.insert(0, PROJECT_ROOT)
 print(">>> Project root added:", PROJECT_ROOT)
 print(">>> Exists?:", os.path.exists(os.path.join(PROJECT_ROOT, "src")))
 
+# Add src/pyfundlib to path for direct imports if needed
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 
 import traceback
 from datetime import datetime
@@ -34,22 +36,27 @@ def test(name: str, func):
 # 1. Data Fetching + Caching
 # =============================================================================
 test("Data Fetcher (AAPL + cache)", lambda: None)
-from src.pyfund.data.fetcher import DataFetcher
-df = DataFetcher.get_historical("AAPL", period="1y")
+from pyfundlib.data.fetcher import DataFetcher
+df = DataFetcher.get_price("AAPL", period="1y")
 assert len(df) > 200, "Too few rows"
-df2 = DataFetcher.get_historical("AAPL", period="1y")  # should be instant
+df2 = DataFetcher.get_price("AAPL", period="1y")  # should be instant
 
 # =============================================================================
 # 2. ML Predictor + Model Training (fast mode)
 # =============================================================================
 test("ML Predictor + XGBoost Training", lambda: None)
-from src.pyfund.ml.predictor import MLPredictor
-from src.pyfund.ml.models.xgboost import XGBoostModel
-from src.pyfund.ml.pipelines.feature_pipeline import FeaturePipeline
+from pyfundlib.ml.predictor import MLPredictor
+from pyfundlib.ml.models.xgboost import XGBoostModel
+from pyfundlib.ml.pipelines.feature_pipeline import FeaturePipeline
 
 predictor = MLPredictor()
+# Ensure df is pandas for the smoke test logic
+if hasattr(df, "to_pandas"):
+    df = df.to_pandas()
 small_data = df.tail(300).copy()
-target = (small_data["Close"].pct_change().shift(-1) > 0).astype(int)
+# Handle case sensitivity in column names
+close_col = "Close" if "Close" in small_data.columns else "close"
+target = (small_data[close_col].pct_change().shift(-1) > 0).astype(int)
 valid = ~target.isna()
 small_data, target = small_data[valid], target[valid]
 
@@ -69,8 +76,8 @@ assert len(pred) == 5
 # 3. Strategy Execution (SMA Crossover)
 # =============================================================================
 test("Strategy: SMA Crossover", lambda: None)
-from src.pyfund.strategies.sma_crossover import SMACrossoverStrategy
-from src.pyfund.backtester.engine import Backtester
+from pyfundlib.strategies.sma_crossover import SMACrossoverStrategy
+from pyfundlib.backtester.engine import Backtester
 
 strategy = SMACrossoverStrategy({"short_window": 10, "long_window": 30})
 backtester = Backtester(strategy=strategy, data=df)
@@ -81,7 +88,7 @@ assert results.equity_curve.iloc[-1] > 8000  # should have some growth
 # 4. Performance Report
 # =============================================================================
 test("Performance Report", lambda: None)
-from src.pyfund.reporting.perf_report import PerformanceReport
+from pyfundlib.reporting.perf_report import PerformanceReport
 
 report = PerformanceReport(
     equity_curve=results.equity_curve,

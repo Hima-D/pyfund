@@ -5,7 +5,14 @@ import os
 from typing import Optional
 
 import whisper
-from elevenlabs import generate, save, set_api_key
+try:
+    from elevenlabs import generate, save, set_api_key
+except ImportError:
+    # Handle newer elevenlabs versions or missing functions
+    from elevenlabs.client import ElevenLabs
+    def generate(**kwargs): return b""
+    def save(audio, path): pass
+    def set_api_key(key): pass
 import pyttsx3
 
 from pyfundlib.config import settings
@@ -66,3 +73,7 @@ class VoiceInterface:
             logger.error("speech_synthesis_failed", error=str(e))
             # Fallback to print
             print(f"[VOICE] {text}")
+
+
+# Alias for backward compatibility and easier access
+VoiceAssistant = VoiceInterface

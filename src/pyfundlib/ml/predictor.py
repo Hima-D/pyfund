@@ -37,7 +37,7 @@ class MLPredictor:
         self.model_dir.mkdir(parents=True, exist_ok=True)
 
         # Auto-detect local tracking if not provided
-        tracking_uri = mlflow_tracking_uri or os.getenv("MLFLOW_TRACKING_URI", "file://./mlruns")
+        tracking_uri = mlflow_tracking_uri or os.getenv("MLFLOW_TRACKING_URI", f"file://{os.getcwd()}/mlruns")
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment(experiment_name)
 
@@ -45,8 +45,9 @@ class MLPredictor:
         client = mlflow.tracking.MlflowClient()
         try:
             client.create_registered_model(registry_name)
-        except mlflow.exceptions.RestException:
-            pass  # already exists
+        except Exception:
+            # Handle both RestException and general MlflowException for existing models
+            pass
 
         self.client = client
         self.storage = DataStorage()

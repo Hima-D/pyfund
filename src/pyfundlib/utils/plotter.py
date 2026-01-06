@@ -174,3 +174,19 @@ class Plotter:
             fig.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.show()
         return fig
+
+
+def plot_equity_curve(equity, **kwargs):
+    return Plotter.equity_curve(equity, **kwargs)
+
+
+def plot_drawdown(equity, **kwargs):
+    return Plotter.drawdown(equity, **kwargs)
+
+
+def plot_returns_distribution(returns, **kwargs):
+    return Plotter.returns_distribution(returns, **kwargs)
+
+
+def plot_rolling_sharpe(returns, **kwargs):
+    return Plotter.rolling_sharpe(returns, **kwargs)

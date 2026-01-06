@@ -71,6 +71,9 @@ Issues = "https://github.com/Hima-D/pyfundlib/issues"
 [project.scripts]
 pyfundlib = "pyfundlib.cli:main"
 
+[tool.hatch.version]
+path = "src/pyfundlib/__about__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyfundlib"]
 

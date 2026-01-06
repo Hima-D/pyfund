@@ -31,7 +31,7 @@ class Monitor:
         self.metrics: dict[str, Any] = {}
         self.history: pd.DataFrame = pd.DataFrame()
         self.stop_event = Event()
-        self.thread: Thread : Optional = None
+        self.thread: Optional[Thread] = None
         self.start_time: Optional[float] = None
 
         # Built-in system metrics
@@ -139,5 +139,8 @@ def _uptime_seconds() -> float:
 
 monitor.register_metric("uptime_seconds", _uptime_seconds)
 
+# Alias for easier access
+SystemMonitor = Monitor
+
 # Start it!
-monitor.start()
+# monitor.start()  # Don't start automatically on import

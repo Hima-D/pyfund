@@ -56,7 +56,7 @@ class XGBoostModel(BaseMLModel):
 
         # Objective mapping
         objective_map = {
-            "classification": "binary:logistic" if len(np.unique(y_train)) == 2 if 'y_train' in locals() else True else "multi:softprob",
+            "classification": "binary:logistic",
             "regression": "reg:squarederror",
             "ranking": "rank:pairwise",
         }
@@ -99,7 +99,7 @@ class XGBoostModel(BaseMLModel):
 
         eval_metric = None
         if self.task == "classification":
-            eval_metric = "logloss" if len(np.unique(y_train)) == 2 if 'y_train' in locals() else True else "mlogloss"
+            eval_metric = "logloss" if len(np.unique(y)) <= 2 else "mlogloss"
         elif self.task == "regression":
             eval_metric = "rmse"
 
@@ -107,7 +107,6 @@ class XGBoostModel(BaseMLModel):
             "X": X,
             "y": y,
             "eval_set": eval_set or [(X, y)],
-            "early_stopping_rounds": self.early_stopping_rounds if eval_set else None,
             "verbose": verbose,
             "sample_weight": sample_weight,
         }
@@ -131,7 +130,7 @@ class XGBoostModel(BaseMLModel):
         metrics = {}
         if self.task == "classification":
             metrics["accuracy"] = accuracy_score(y, y_pred)
-            if y_prob is not None and len(np.unique(y_train)) == 2 if 'y_train' in locals() else True:
+            if y_prob is not None and len(np.unique(y)) == 2:
                 metrics["auc"] = roc_auc_score(y, y_prob[:, 1])
         elif self.task == "regression":
             metrics["rmse"] = mean_squared_error(y, y_pred, squared=False)
